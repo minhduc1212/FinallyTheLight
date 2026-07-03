@@ -1,8 +1,8 @@
 # Glossary Report - my_project
-Genre: Khoa học viễn tưởng
-Last updated: 2026-06-09T10:03:19.075782
+Genre: Mặc định
+Last updated: 2026-07-04T01:28:55.924912
 
-## Thuật ngữ (89 terms)
+## Thuật ngữ (94 terms)
 - **法力** → pháp lực
 - **神识** → thần thức
 - **白骨骷髅** → bộ xương khô
@@ -92,13 +92,18 @@ Last updated: 2026-06-09T10:03:19.075782
 - **Mars** → Sao Hỏa
 - **Fraser river** → sông Fraser
 - **torpor** → trạng thái ngủ đông
+- **Cosmic Drift** → Sự trôi dạt vũ trụ
+- **navigation console** → bảng điều khiển điều hướng
+- **chemical dormancy** → trạng thái ngủ đông hóa học
+- **nutrient drip protocol** → quy trình truyền chất dinh dưỡng
+- **automated AI voice** → giọng nói AI tự động
 
-## Nhân vật (13 characters)
+## Nhân vật (14 characters)
 - **Tôi (Người kể chuyện)**: Người kể chuyện, người đang hồi tưởng về lịch sử khám phá vũ trụ.
 - **Cha mẹ tôi**: Cha mẹ của người kể chuyện.
 - **Đồng nghiệp (colleagues)**: Những người cùng làm việc với người kể chuyện, những người có thể tuyên bố mình có nguồn cảm hứng trở thành phi hành gia.
 - **Nhân loại (Humans)**: Loài người nói chung, được mô tả là thích nghi.
-- **Ariadne**: Ariadne | Phi hành gia, người kể chuyện | tôi / cô
+- **Ariadne**: Ariadne | Phi hành gia, người kể chuyện, Tên tàu vũ trụ | tôi / cô / -
 - **Chikondi**: Chikondi | Thành viên phi hành đoàn | Anh/Tôi (tùy ngữ cảnh), xưng hô thân mật
 - **Elena**: Elena | Phi hành gia kỳ cựu | Cô/Tôi (tùy ngữ cảnh)
 - **Jack**: Jack | Thành viên phi hành đoàn | Anh/Tôi (tùy ngữ cảnh)
@@ -107,3 +112,4 @@ Last updated: 2026-06-09T10:03:19.075782
 - **Tubuspiscis quesadae**: Tên loài sinh vật | Sinh vật trên Aecor | N/A
 - **Doliopiscis aecorii**: Tên loài sinh vật | Sinh vật trên Aecor | N/A
 - **Pigertapete aecorii**: Tên loài sinh vật | Sinh vật trên Aecor | N/A
+- **Merian**: Merian | Phi hành gia | anh

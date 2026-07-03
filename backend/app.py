@@ -42,58 +42,67 @@ app.add_middleware(
 current_project_var = contextvars.ContextVar("current_project", default=None)
 project_status = {}
 
-# Intercept prints from pipeline
+# Intercept prints globally to prevent UnicodeEncodeError on Windows
 import builtins
-def custom_pipeline_print(*args, **kwargs):
-    # Print to actual console
-    builtins.print(*args, **kwargs)
-    
-    project = current_project_var.get()
-    if not project:
-        return
-        
+original_print = builtins.print
+
+def safe_print(*args, **kwargs):
     message = " ".join(str(a) for a in args)
     
-    if project not in project_status:
-        project_status[project] = {
-            "status": "translating",
-            "current_chunk": 0,
-            "total_chunks": 0,
-            "step": "Initializing",
-            "logs": [],
-            "error": None,
-            "output_file": None
-        }
-        
-    status = project_status[project]
-    status["logs"].append(message)
-    if len(status["logs"]) > 200:
-        status["logs"] = status["logs"][-200:]
-        
-    # Check for progress messages
-    if "Chunk" in message and "/" in message:
-        progress_match = re.search(r"Chunk\s+(\d+)/(\d+)", message)
-        if progress_match:
-            status["current_chunk"] = int(progress_match.group(1))
-            status["total_chunks"] = int(progress_match.group(2))
+    project = current_project_var.get()
+    if project:
+        if project not in project_status:
+            project_status[project] = {
+                "status": "translating",
+                "current_chunk": 0,
+                "total_chunks": 0,
+                "step": "Initializing",
+                "logs": [],
+                "error": None,
+                "output_file": None
+            }
             
-    # Step description
-    step_match = re.search(r"Step\s+\d+/\d+:\s*([^-.\n]+)", message)
-    if step_match:
-        status["step"] = step_match.group(1).strip()
-    elif "Verifying similarity" in message:
-        status["step"] = "Verifying similarity"
-    elif "Splitting into 2 smaller chunks" in message:
-        status["step"] = "Splitting chunk"
-    elif "completed" in message:
-        status["step"] = "Completed chunk"
-    elif "Done" in message:
-        status["step"] = "Translation finished"
-    elif "Resuming progress" in message:
-        status["step"] = "Resuming from checkpoint"
+        status = project_status[project]
+        status["logs"].append(message)
+        if len(status["logs"]) > 200:
+            status["logs"] = status["logs"][-200:]
+            
+        # Check for progress messages
+        if "Chunk" in message and "/" in message:
+            progress_match = re.search(r"Chunk\s+(\d+)/(\d+)", message)
+            if progress_match:
+                status["current_chunk"] = int(progress_match.group(1))
+                status["total_chunks"] = int(progress_match.group(2))
+                
+        # Step description
+        step_match = re.search(r"Step\s+\d+/\d+:\s*([^-.\n]+)", message)
+        if step_match:
+            status["step"] = step_match.group(1).strip()
+        elif "Verifying similarity" in message:
+            status["step"] = "Verifying similarity"
+        elif "Splitting into 2 smaller chunks" in message:
+            status["step"] = "Splitting chunk"
+        elif "completed" in message:
+            status["step"] = "Completed chunk"
+        elif "Done" in message:
+            status["step"] = "Translation finished"
+        elif "Resuming progress" in message:
+            status["step"] = "Resuming from checkpoint"
 
-# Monkey-patch pipeline
-src.pipeline.print = custom_pipeline_print
+    try:
+        original_print(*args, **kwargs)
+    except UnicodeEncodeError:
+        # Fallback to encoding-safe print for Windows CP1252 consoles
+        try:
+            encoding = sys.stdout.encoding or 'utf-8'
+            safe_args = [str(arg).encode(encoding, errors='replace').decode(encoding) for arg in args]
+            original_print(*safe_args, **kwargs)
+        except Exception:
+            pass
+
+# Globally overwrite builtins.print
+builtins.print = safe_print
+src.pipeline.print = safe_print
 
 class SettingsUpdate(BaseModel):
     concurrency: Dict[str, Any]

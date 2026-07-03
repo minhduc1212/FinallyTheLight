@@ -1,6 +1,0 @@
-2026-07-04 01:25:39,742 - INFO - --- Pipeline Initialized ---
-2026-07-04 01:25:39,742 - INFO - Project: my_project | Genre: default | Target Lang: vi | Model: gemma-4-31b-it
-2026-07-04 01:25:58,658 - INFO - --- Pipeline Initialized ---
-2026-07-04 01:25:58,658 - INFO - Project: my_project | Genre: default | Target Lang: vi | Model: gemma-4-31b-it
-2026-07-04 01:27:03,175 - INFO - --- Pipeline Initialized ---
-2026-07-04 01:27:03,175 - INFO - Project: my_project | Genre: default | Target Lang: vi | Model: gemma-4-31b-it

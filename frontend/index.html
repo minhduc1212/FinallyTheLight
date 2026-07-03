@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Finally The Light — Trình dịch tiểu thuyết AI tinh tế</title>
+  <!-- Google Fonts: Inter & Source Serif 4 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400..600;1,8..60,400..600&display=swap" rel="stylesheet">
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="index.css">
+  <!-- Vue 3 CDN -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="theme-light">
+  <div id="app" v-cloak>
+    <!-- NAV BAR -->
+    <nav class="navbar">
+      <div class="nav-container">
+        <div class="nav-left" @click="goToLanding">
+          <span class="wordmark">Finally The Light</span>
+        </div>
+        <div class="nav-center">
+          <button class="nav-link" :class="{ active: viewMode === 'app' }" @click="viewMode = 'app'">Trình dịch</button>
+          <button class="nav-link" @click="toggleDrawer('glossary')">Thư viện thuật ngữ</button>
+          <button class="nav-link" @click="toggleDrawer('history')">Lịch sử dịch</button>
+        </div>
+        <div class="nav-right">
+          <button class="btn-ghost text-slate" @click="toggleDrawer('settings')">
+            <i data-lucide="settings" class="icon-sm"></i> Thiết lập
+          </button>
+          <button class="btn-outline" @click="showAuthModal = true">Đăng nhập</button>
+          <button class="btn-filled" @click="viewMode = 'app'">Dùng thử</button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- LANDING PAGE -->
+    <main v-if="viewMode === 'landing'" class="landing-container">
+      <section class="hero-section">
+        <h1 class="hero-title">Dịch truyện, giữ trọn văn phong.</h1>
+        <p class="hero-subtitle">
+          Công cụ dịch thuật chuyên nghiệp tối ưu hóa bằng mô hình ngôn ngữ lớn (LLM). Tự động phân tách bối cảnh, trích xuất thuật ngữ và hiệu đính văn học.
+        </p>
+        <div class="hero-cta">
+          <button class="btn-filled btn-lg" @click="viewMode = 'app'">Dịch ngay</button>
+        </div>
+      </section>
+
+      <!-- Screenshot / Product Preview Grid -->
+      <section class="preview-section">
+        <div class="preview-card" @click="viewMode = 'app'">
+          <div class="preview-header">
+            <div class="preview-dots"><span></span><span></span><span></span></div>
+            <div class="preview-title">vantu_translator_workspace</div>
+          </div>
+          <div class="preview-body">
+            <div class="preview-col">
+              <div class="preview-lang">TIẾNG TRUNG (AUTO-DETECT)</div>
+              <div class="preview-text">“你这个叛徒！”林风怒视着眼前的黑衣人，握紧了手中的长剑。那人冷笑一声，缓缓摘下了面具，露出一张令林风无比熟悉的脸。</div>
+            </div>
+            <div class="preview-col border-left">
+              <div class="preview-lang">TIẾNG VIỆT</div>
+              <div class="preview-text">“Ngươi là tên phản đồ!” Lâm Phong giận dữ nhìn chằm chằm người áo đen trước mắt, nắm chặt thanh trường kiếm trong tay. Kẻ kia cười lạnh một tiếng, từ từ tháo xuống mặt nạ, lộ ra một gương mặt khiến Lâm Phong vô cùng quen thuộc.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features grid (Do's and Don'ts styled) -->
+      <section class="features-section">
+        <div class="features-grid">
+          <!-- Card 1 -->
+          <div class="feature-card">
+            <i data-lucide="split" class="feature-icon"></i>
+            <h3 class="feature-title">Semantic Chunking</h3>
+            <p class="feature-desc">Tự động chia tách văn bản thông minh theo ranh giới câu và đoạn văn để bảo toàn tính mạch lạc của câu chuyện.</p>
+          </div>
+          <!-- Card 2 -->
+          <div class="feature-card">
+            <i data-lucide="book-open" class="feature-icon"></i>
+            <h3 class="feature-title">Trích xuất Glossary hợp nhất</h3>
+            <p class="feature-desc">Phát hiện nhân vật, danh xưng, và thuật ngữ tu luyện ngay trong một API call duy nhất để đồng bộ ngữ cảnh cho chunk sau.</p>
+          </div>
+          <!-- Card 3 -->
+          <div class="feature-card">
+            <i data-lucide="sparkles" class="feature-icon"></i>
+            <h3 class="feature-title">Biên tập & Hiệu đính v2</h3>
+            <p class="feature-desc">Lượt gọi API thứ hai tự động đánh bóng câu từ, loại bỏ câu sượng Hán Việt và thuần Việt hóa văn phong văn học.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="landing-footer">
+        <div class="footer-content">
+          <span>© 2026 Finally The Light. Bản quyền thuộc về ban biên tập.</span>
+        </div>
+      </footer>
+    </main>
+
+    <!-- APP WORKSPACE -->
+    <main v-else class="app-container">
+      <!-- Top Workspace Bar: Genre selector -->
+      <div class="genre-bar" :class="{ expanded: showAllGenres }">
+        <div class="genre-scroll-container">
+          <button 
+            v-for="(info, key) in genres" 
+            :key="key"
+            class="genre-pill"
+            :class="{ active: selectedGenre === key }"
+            @click="selectedGenre = key"
+          >
+            {{ info.label }}
+          </button>
+        </div>
+        <button class="expand-genres-btn" @click="showAllGenres = !showAllGenres" :title="showAllGenres ? 'Thu gọn thể loại' : 'Hiển thị tất cả thể loại'">
+          <svg v-if="showAllGenres" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-sm">
+            <path d="m18 15-6-6-6 6"></path>
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-sm">
+            <path d="m6 9 6 6 6-6"></path>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Projects Manager Bar -->
+      <div class="project-bar">
+        <div class="project-selector">
+          <label class="project-label">Dự án:</label>
+          <div class="project-select-wrapper custom-dropdown">
+            <button class="dropdown-trigger" @click.stop="showProjectDropdown = !showProjectDropdown" type="button">
+              <span>{{ currentProject || 'Chọn dự án' }}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-xs text-stone">
+                <path d="m6 9 6 6 6-6"></path>
+              </svg>
+            </button>
+            <div class="dropdown-menu" :class="{ show: showProjectDropdown }">
+              <div 
+                v-for="proj in projects" 
+                :key="proj" 
+                class="dropdown-item" 
+                :class="{ active: currentProject === proj }" 
+                @click="selectProject(proj)"
+              >
+                {{ proj }}
+              </div>
+              <div v-if="projects.length === 0" class="dropdown-item text-stone">Chưa có dự án nào</div>
+            </div>
+          </div>
+          <button class="btn-ghost icon-btn" @click="showNewProjectModal = true" title="Tạo dự án mới">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-sm">
+              <path d="M5 12h14"></path>
+              <path d="M12 5v14"></path>
+            </svg>
+          </button>
+        </div>
+        <div class="project-meta-info" v-if="currentProject">
+          <span class="badge" v-if="projectStatus.status === 'translating'">Đang dịch ({{ projectStatus.current_chunk }}/{{ projectStatus.total_chunks }})</span>
+          <span class="badge badge-success" v-else-if="projectStatus.status === 'completed'">Hoàn thành</span>
+          <span class="badge badge-error" v-else-if="projectStatus.status === 'failed'">Lỗi</span>
+          <span class="badge badge-idle" v-else>Chờ dịch</span>
+        </div>
+      </div>
+
+      <!-- MAIN SPLIT PANE TRANSLATOR -->
+      <div class="split-pane-wrapper">
+        <div class="split-pane-container">
+          <!-- LEFT COLUMN: INPUT -->
+          <div class="editor-pane source-pane">
+            <div class="pane-header">
+              <div class="custom-dropdown">
+                <button class="dropdown-trigger" @click.stop="toggleLangDropdown('source')" type="button">
+                  <span>{{ getLanguageLabel(sourceLang) }}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-xs text-stone">
+                    <path d="m6 9 6 6 6-6"></path>
+                  </svg>
+                </button>
+                <div class="dropdown-menu" :class="{ show: showSourceLangDropdown }">
+                  <div class="dropdown-item" :class="{ active: sourceLang === 'auto' }" @click="selectSourceLang('auto')">Tự động phát hiện (Auto)</div>
+                  <div class="dropdown-item" :class="{ active: sourceLang === 'zh' }" @click="selectSourceLang('zh')">Tiếng Trung (ZH)</div>
+                  <div class="dropdown-item" :class="{ active: sourceLang === 'en' }" @click="selectSourceLang('en')">Tiếng Anh (EN)</div>
+                  <div class="dropdown-item" :class="{ active: sourceLang === 'ja' }" @click="selectSourceLang('ja')">Tiếng Nhật (JA)</div>
+                  <div class="dropdown-item" :class="{ active: sourceLang === 'ko' }" @click="selectSourceLang('ko')">Tiếng Hàn (KO)</div>
+                </div>
+              </div>
+
+              <div class="pane-actions">
+                <button class="btn-ghost icon-btn text-stone" @click="clearInput" title="Xóa nội dung">
+                  <i data-lucide="trash-2" class="icon-sm"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Upload drag/drop file zone or Textarea -->
+            <div class="editor-content-wrapper">
+              <div v-if="!sourceText && !uploadedFile" class="upload-dropzone" @click="triggerFileSelect">
+                <input type="file" ref="fileInput" class="hidden-file-input" accept=".txt,.md" @change="onFileChange">
+                <i data-lucide="upload-cloud" class="upload-icon"></i>
+                <p class="upload-title">Kéo thả tệp tin hoặc click để tải lên</p>
+                <p class="upload-sub">Hỗ trợ tệp văn bản .txt hoặc .md</p>
+              </div>
+              <div v-else-if="uploadedFile" class="uploaded-file-banner">
+                <i data-lucide="file-text" class="file-icon"></i>
+                <div class="file-info">
+                  <span class="file-name">{{ uploadedFile.name }}</span>
+                  <span class="file-size">{{ formatBytes(uploadedFile.size) }}</span>
+                </div>
+                <button class="btn-ghost text-stone remove-file-btn" @click="clearInput">
+                  <i data-lucide="x" class="icon-sm"></i>
+                </button>
+              </div>
+              <textarea 
+                v-show="sourceText || !uploadedFile"
+                v-model="sourceText" 
+                class="editor-textarea" 
+                placeholder="Dán văn bản gốc vào đây hoặc tải lên tệp tin..."
+                @input="onTextareaInput"
+              ></textarea>
+            </div>
+
+            <div class="pane-footer">
+              <span class="char-counter">{{ charCount }} ký tự</span>
+            </div>
+          </div>
+
+          <!-- MIDDLE SWAP BUTTON (Float or Divider element) -->
+          <div class="pane-divider">
+            <button class="swap-btn" @click="swapLanguages" title="Đảo chiều dịch">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-sm">
+                <path d="m16 3 4 4-4 4"></path>
+                <path d="M20 7H4"></path>
+                <path d="m8 21-4-4 4-4"></path>
+                <path d="M4 17h16"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- RIGHT COLUMN: OUTPUT -->
+          <div class="editor-pane target-pane">
+            <div class="pane-header">
+              <div class="custom-dropdown">
+                <button class="dropdown-trigger" @click.stop="toggleLangDropdown('target')" type="button">
+                  <span>{{ getLanguageLabel(targetLang) }}</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-xs text-stone">
+                    <path d="m6 9 6 6 6-6"></path>
+                  </svg>
+                </button>
+                <div class="dropdown-menu dropdown-menu-right" :class="{ show: showTargetLangDropdown }">
+                  <div class="dropdown-item" :class="{ active: targetLang === 'vi' }" @click="selectTargetLang('vi')">Tiếng Việt (VI)</div>
+                  <div class="dropdown-item" :class="{ active: targetLang === 'zh' }" @click="selectTargetLang('zh')">Tiếng Trung (ZH)</div>
+                  <div class="dropdown-item" :class="{ active: targetLang === 'en' }" @click="selectTargetLang('en')">Tiếng Anh (EN)</div>
+                  <div class="dropdown-item" :class="{ active: targetLang === 'ja' }" @click="selectTargetLang('ja')">Tiếng Nhật (JA)</div>
+                  <div class="dropdown-item" :class="{ active: targetLang === 'ko' }" @click="selectTargetLang('ko')">Tiếng Hàn (KO)</div>
+                  <div class="dropdown-item" :class="{ active: targetLang === 'id' }" @click="selectTargetLang('id')">Tiếng Indonesia (ID)</div>
+                </div>
+              </div>
+
+              <!-- DOWNLOAD & EXPORT ACTIONS -->
+              <div class="pane-actions" v-if="projectStatus.status === 'completed' || translatedText">
+                <button class="btn-outline btn-sm" @click="downloadTranslation" title="Tải xuống tệp đã dịch">
+                  <i data-lucide="download" class="icon-xs"></i> Tải .txt
+                </button>
+                <button class="btn-outline btn-sm" @click="downloadGlossaryReport" title="Tải báo cáo thuật ngữ">
+                  <i data-lucide="file-spreadsheet" class="icon-xs"></i> Tải glossary
+                </button>
+              </div>
+            </div>
+
+            <!-- Output Translation Area -->
+            <div class="editor-content-wrapper output-content-wrapper">
+              <!-- Placeholder -->
+              <div v-if="!translatedText && projectStatus.status !== 'translating'" class="output-placeholder">
+                <i data-lucide="pen-tool" class="placeholder-icon text-stone"></i>
+                <p>Bản dịch sẽ hiện ở đây</p>
+              </div>
+              
+              <!-- Translated Text with HTML Glossary highlight -->
+              <div 
+                v-else
+                class="output-text-area" 
+                v-html="renderedTranslationHTML"
+              ></div>
+
+              <!-- Translating Indicator (3 Blinking dots) -->
+              <div v-if="projectStatus.status === 'translating'" class="translating-indicator">
+                <span class="dot"></span>
+                <span class="dot"></span>
+                <span class="dot"></span>
+              </div>
+
+              <!-- SEAL STAMP animation (Fades in when completed) -->
+              <transition name="seal-stamp-fade">
+                <div class="seal-stamp" v-if="projectStatus.status === 'completed'">
+                  <div class="seal-stamp-circle">
+                    <span class="seal-char">Ấn</span>
+                  </div>
+                </div>
+              </transition>
+            </div>
+
+            <div class="pane-footer">
+              <span class="char-counter">{{ translatedCharCount }} ký tự</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTION BAR (Translate / Progress) -->
+      <div class="action-bar-container">
+        <!-- Progress display when translating -->
+        <div class="action-progress-wrapper" v-if="projectStatus.status === 'translating'">
+          <div class="progress-info">
+            <span class="progress-step-text">⏳ {{ projectStatus.step }}...</span>
+            <span class="progress-pct">{{ progressPct }}% ({{ projectStatus.current_chunk }}/{{ projectStatus.total_chunks }} chunks)</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" :style="{ width: progressPct + '%' }"></div>
+          </div>
+        </div>
+        
+        <!-- Standard trigger actions -->
+        <div class="action-buttons-row" v-else>
+          <!-- Resume Option if checkpoint exists -->
+          <button 
+            v-if="hasCheckpoint"
+            class="btn-outline btn-lg" 
+            @click="triggerTranslate(true)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-sm">
+              <polygon points="6 3 20 12 6 21 6 3"></polygon>
+            </svg>
+            <span>Tiếp tục dịch</span>
+          </button>
+          
+          <button 
+            class="btn-filled btn-lg" 
+            :disabled="(!sourceText && !uploadedFile) || projectStatus.status === 'translating'"
+            @click="triggerTranslate(false)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-sm">
+              <path d="m5 8 6 6"></path>
+              <path d="m4 14 6-6 2-3"></path>
+              <path d="M2 5h12"></path>
+              <path d="M7 2h1"></path>
+              <path d="m22 22-5-10-5 10"></path>
+              <path d="M14 18h6"></path>
+            </svg>
+            <span>Dịch tác phẩm</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Logs panel expandable -->
+      <div class="logs-panel" :class="{ expanded: showLogsPanel }">
+        <div class="logs-panel-header" @click="showLogsPanel = !showLogsPanel">
+          <span class="title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-xs">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" x2="20" y1="19" y2="19"></line>
+            </svg>
+            Nhật ký hệ thống (Real-time logs)
+          </span>
+          <svg v-if="showLogsPanel" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-sm">
+            <path d="m6 9 6 6 6-6"></path>
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-sm">
+            <path d="m18 15-6-6-6 6"></path>
+          </svg>
+        </div>
+        <div class="logs-panel-body" ref="logBody">
+          <div v-for="(log, idx) in projectStatus.logs" :key="idx" class="log-line" :class="getLogClass(log)">
+            {{ log }}
+          </div>
+          <div v-if="projectStatus.logs.length === 0" class="log-line text-stone">Không có nhật ký hoạt động.</div>
+        </div>
+      </div>
+    </main>
+
+    <!-- SLIDING DRAWERS -->
+    <!-- 1. GLOSSARY DRAWER -->
+    <div class="drawer-overlay" :class="{ open: drawers.glossary }" @click="toggleDrawer('glossary')"></div>
+    <aside class="drawer" :class="{ open: drawers.glossary }">
+      <div class="drawer-header">
+        <h2 class="drawer-title"><i data-lucide="book-open" class="icon-sm"></i> Thuật ngữ & Nhân vật</h2>
+        <button class="btn-ghost icon-btn" @click="toggleDrawer('glossary')">
+          <i data-lucide="x" class="icon-sm"></i>
+        </button>
+      </div>
+      <div class="drawer-body">
+        <div class="drawer-tabs">
+          <button class="tab-btn" :class="{ active: glossaryTab === 'terms' }" @click="glossaryTab = 'terms'">Thuật ngữ</button>
+          <button class="tab-btn" :class="{ active: glossaryTab === 'characters' }" @click="glossaryTab = 'characters'">Nhân vật</button>
+        </div>
+
+        <div class="search-box">
+          <input type="text" v-model="glossarySearch" placeholder="Tìm kiếm từ khóa..." class="input-field">
+        </div>
+
+        <!-- Add Glossary item Form -->
+        <form @submit.prevent="addGlossaryItem" class="glossary-form">
+          <div class="form-row">
+            <input 
+              v-model="newGlossaryKey" 
+              type="text" 
+              :placeholder="glossaryTab === 'terms' ? 'Từ gốc (ví dụ: torpor)' : 'Tên nhân vật (ví dụ: Ariadne)'" 
+              required 
+              class="input-field"
+            >
+          </div>
+          <div class="form-row">
+            <input 
+              v-model="newGlossaryVal" 
+              type="text" 
+              :placeholder="glossaryTab === 'terms' ? 'Nghĩa dịch (ví dụ: ngủ đông)' : 'Dịch | Vai trò | Xưng hô (ví dụ: Ariadne | nữ chính | cô / tôi)'" 
+              required 
+              class="input-field"
+            >
+          </div>
+          <button type="submit" class="btn-filled btn-sm full-width">Thêm mới</button>
+        </form>
+
+        <!-- Terms list -->
+        <div v-if="glossaryTab === 'terms'" class="glossary-list">
+          <div v-for="(val, key) in filteredTerms" :key="key" class="glossary-item">
+            <div class="item-content">
+              <span class="item-key">{{ key }}</span>
+              <span class="item-arrow">→</span>
+              <span class="item-val">{{ val }}</span>
+            </div>
+            <button class="btn-ghost icon-btn delete-btn text-stone" @click="deleteGlossaryItem('term', key)">
+              <i data-lucide="trash-2" class="icon-xs"></i>
+            </button>
+          </div>
+          <div v-if="Object.keys(filteredTerms).length === 0" class="empty-state text-slate">Không tìm thấy thuật ngữ nào.</div>
+        </div>
+
+        <!-- Characters list -->
+        <div v-else class="glossary-list">
+          <div v-for="(val, key) in filteredCharacters" :key="key" class="glossary-item character-item">
+            <div class="item-content">
+              <span class="item-key">{{ key }}</span>
+              <div class="character-details">
+                <span v-for="(part, pIdx) in val.split('|')" :key="pIdx" class="char-detail-part">
+                  {{ part.trim ? part.trim() : part }}
+                </span>
+              </div>
+            </div>
+            <button class="btn-ghost icon-btn delete-btn text-stone" @click="deleteGlossaryItem('character', key)">
+              <i data-lucide="trash-2" class="icon-xs"></i>
+            </button>
+          </div>
+          <div v-if="Object.keys(filteredCharacters).length === 0" class="empty-state text-slate">Không tìm thấy nhân vật nào.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 2. HISTORY / PROJECTS DRAWER -->
+    <div class="drawer-overlay" :class="{ open: drawers.history }" @click="toggleDrawer('history')"></div>
+    <aside class="drawer" :class="{ open: drawers.history }">
+      <div class="drawer-header">
+        <h2 class="drawer-title"><i data-lucide="history" class="icon-sm"></i> Lịch sử dự án dịch</h2>
+        <button class="btn-ghost icon-btn" @click="toggleDrawer('history')">
+          <i data-lucide="x" class="icon-sm"></i>
+        </button>
+      </div>
+      <div class="drawer-body">
+        <div class="projects-list">
+          <div 
+            v-for="proj in projects" 
+            :key="proj" 
+            class="project-item"
+            :class="{ active: currentProject === proj }"
+            @click="selectProject(proj)"
+          >
+            <div class="proj-name">
+              <i data-lucide="folder" class="icon-sm text-stone"></i>
+              <span>{{ proj }}</span>
+            </div>
+            <i data-lucide="chevron-right" class="icon-xs text-stone"></i>
+          </div>
+          <div v-if="projects.length === 0" class="empty-state text-slate">Chưa có dự án nào.</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- 3. SETTINGS DRAWER -->
+    <div class="drawer-overlay" :class="{ open: drawers.settings }" @click="toggleDrawer('settings')"></div>
+    <aside class="drawer" :class="{ open: drawers.settings }">
+      <div class="drawer-header">
+        <h2 class="drawer-title"><i data-lucide="settings" class="icon-sm"></i> Thiết lập cấu hình</h2>
+        <button class="btn-ghost icon-btn" @click="toggleDrawer('settings')">
+          <i data-lucide="x" class="icon-sm"></i>
+        </button>
+      </div>
+      <div class="drawer-body">
+        <form @submit.prevent="saveSettings" class="settings-form">
+          <!-- API Key section -->
+          <div class="form-section">
+            <h3 class="section-title">Google GenAI API</h3>
+            <div class="form-group">
+              <label>Khóa API (GEMINI_API_KEY)</label>
+              <input type="password" v-model="apiKey" placeholder="Dán khóa API Gemini của bạn..." class="input-field">
+              <span class="help-text">Nếu trống, API sẽ sử dụng cấu hình từ tệp .env ở máy chủ.</span>
+            </div>
+          </div>
+
+          <!-- Model Settings -->
+          <div class="form-section">
+            <h3 class="section-title">Cấu hình mô hình</h3>
+            <div class="form-group">
+              <label>Model name</label>
+              <input type="text" v-model="settings.model.name" class="input-field" required>
+            </div>
+            <div class="form-group-row">
+              <div class="form-group">
+                <label>Nhiệt độ (Temp)</label>
+                <input type="number" step="0.05" v-model="settings.model.temperature" class="input-field" required>
+              </div>
+              <div class="form-group">
+                <label>Top P</label>
+                <input type="number" step="0.05" v-model="settings.model.top_p" class="input-field" required>
+              </div>
+            </div>
+          </div>
+
+          <!-- Features settings -->
+          <div class="form-section">
+            <h3 class="section-title">Tính năng dịch thuật</h3>
+            <div class="checkbox-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="settings.features.rolling_history">
+                <span>Rolling History (Bối cảnh luân phiên)</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="settings.features.editing_and_proofreading">
+                <span>Biên tập & Hiệu đính (Proofread)</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="settings.features.auto_glossary">
+                <span>Tự trích xuất thuật ngữ</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="settings.features.detect_duplicate_translation">
+                <span>Chống lặp từ / lười dịch</span>
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="settings.features.relevance_filtering">
+                <span>Lọc thuật ngữ theo đoạn</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Pipeline parameters -->
+          <div class="form-section">
+            <h3 class="section-title">Tham số phân đoạn</h3>
+            <div class="form-group">
+              <label>Độ dài đoạn (Chunk size - Tokens)</label>
+              <input type="number" step="500" v-model="settings.translation.chunk_size" class="input-field" required>
+            </div>
+            <div class="form-group">
+              <label>Số luồng chạy song song (Workers)</label>
+              <input type="number" v-model="settings.translation.max_workers" class="input-field" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-filled full-width btn-lg">Lưu thiết lập</button>
+        </form>
+      </div>
+    </aside>
+
+    <!-- NEW PROJECT MODAL -->
+    <div class="modal-wrapper" v-if="showNewProjectModal">
+      <div class="modal-overlay" @click="showNewProjectModal = false"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Tạo dự án mới</h3>
+          <button class="btn-ghost icon-btn" @click="showNewProjectModal = false">
+            <i data-lucide="x" class="icon-sm"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Tên dự án</label>
+            <input type="text" v-model="newProjectName" placeholder="Ví dụ: tieu_dao_tien_ton" class="input-field" @keyup.enter="createNewProject">
+            <span class="help-text">Tên dự án nên viết liền, không dấu, dùng gạch dưới thay dấu cách.</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-outline" @click="showNewProjectModal = false">Hủy</button>
+          <button class="btn-filled" @click="createNewProject" :disabled="!newProjectName">Tạo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUTHENTICATION DIALOG (PLACEHOLDER) -->
+    <div class="modal-wrapper" v-if="showAuthModal">
+      <div class="modal-overlay" @click="showAuthModal = false"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Đăng nhập tài khoản</h3>
+          <button class="btn-ghost icon-btn" @click="showAuthModal = false">
+            <i data-lucide="x" class="icon-sm"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="text-slate text-sm">Hệ thống dịch thuật Finally The Light vận hành nội bộ trên máy trạm của bạn. Đăng nhập trực tuyến sẽ giúp bạn lưu trữ thuật ngữ đồng bộ đám mây (Tính năng sắp ra mắt).</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-outline" @click="showAuthModal = false">Đóng</button>
+          <button class="btn-filled" @click="showAuthModal = false">Xác nhận</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="index.js"></script>
+</body>
+</html>

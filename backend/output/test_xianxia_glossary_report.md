@@ -1,0 +1,55 @@
+# Glossary Report - test_xianxia
+Genre: Tiên hiệp / Huyền huyễn
+Last updated: 2026-07-04T00:09:48.381678
+
+## Thuật ngữ (42 terms)
+- **南凰洲** → Nam Hoàng Châu
+- **末土** → Vùng đất hoang tàn
+- **圣地** → Thánh địa
+- **望古** → Vọng Cổ
+- **金创草** → Cỏ trị thương
+- **神灵残面** → Tàn diện Thần Linh
+- **异质** → Dị chất
+- **异化点** → Điểm dị hóa
+- **凝气** → Ngưng Khí
+- **筑基** → Trúc Cơ
+- **结丹** → Kết Đan
+- **元婴** → Nguyên Anh
+- **海山诀** → Hải Sơn Quyết
+- **魈** → Quỷ Tiêu
+- **魁** → Khôi
+- **一虎之力** → Sức mạnh một hổ
+- **灵能** → Linh năng
+- **仙灵之气** → Tiên linh chi khí
+- **古皇主宰** → Cổ Hoàng Chúa Tể
+- **禁区** → Vùng cấm
+- **贫民窟** → Khu ổ chuột
+- **神灵** → Thần Linh
+- **修行** → Tu hành
+- **修士** → Tu sĩ
+- **铁签** → que sắt đen
+- **观想** → quan tưởng
+- **吐纳** → thổ nạp
+- **结界** → kết giới
+- **图腾** → đồ đằng
+- **散修** → tán tu
+- **紫水晶** → tinh thể tím
+- **十字瞳孔** → đồng tử chữ thập
+- **竹简** → thẻ tre
+- **紫光** → ánh sáng tím
+- **异兽** → dị thú
+- **神灵气息** → khí tức Thần Linh
+- **异化** → dị hóa
+- **九幽炼狱** → Cửu U Luyện Ngục
+- **血雨** → huyết vũ
+- **寿斑** → vết đồi mồi
+- **炼体** → luyện thể
+- **凝气境** → cảnh giới Ngưng Khí
+
+## Nhân vật (6 characters)
+- **许青**: Hứa Thanh | Nhân vật chính, thiếu niên kiên cường sinh tồn trong phế tích hoang tàn, Nam chính | hắn, cậu / cậu/hắn
+- **神灵**: Thần Linh | Thực thể tối cao tàn khuyết mang lại tai ương hủy diệt thế giới, Thực thể tối cao gây ra thảm họa | Ngài, nó / Ngài/Hắn
+- **古皇主宰**: Cổ Hoàng Chúa Tể | Những kẻ thống trị cổ đại | họ/các vị
+- **少年**: Thiếu niên | Nhân vật chính | cậu/hắn
+- **药铺老人**: lão nhân tiệm thuốc | người bán thuốc trong thành | ông/lão
+- **老人**: Ông lão | Người chết trong tiệm thuốc | được Hứa Thanh nhắm mắt và che xác

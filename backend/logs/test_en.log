@@ -1,0 +1,201 @@
+2026-07-03 22:42:00,631 - INFO - --- Pipeline Initialized ---
+2026-07-03 22:42:00,631 - INFO - Project: test_en | Genre: scifi | Target Lang: vi | Model: gemma-4-31b-it
+2026-07-03 22:42:01,225 - INFO - Starting translation of file: test_en.txt
+2026-07-03 22:42:01,225 - INFO - Source Language: English 🇬🇧 (auto) | Target Language: VI
+2026-07-03 22:42:01,225 - INFO - Total Chunks: 9 | Chunks Stats: {'total_chunks': 9, 'min_tokens': 1810, 'max_tokens': 2533, 'avg_tokens': 2383, 'total_tokens': 21451, 'source_lang': 'en', 'chars_per_token': 4.0}
+2026-07-03 22:42:01,226 - INFO - Chunk 1/009 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 22:42:01,226 - DEBUG - Chunk 1/009 - Context: (Đây là phần đầu của tác phẩm, không có bối cảnh trước)
+2026-07-03 22:44:03,847 - DEBUG - Chunk 1/009 - Raw response: <translation>
+Tôi chưa bao giờ biết đến một Trái Đất không hề hay biết về sự sống ở những nơi khác. Tàu thăm dò Cetus đã thu thập các mẫu vật chứa đầy vi khuẩn từ những mạch nước phun trên Europa hai ...
+2026-07-03 22:44:03,862 - INFO - Chunk 1/009 - Extracted: 5 terms, 0 characters
+2026-07-03 22:44:03,863 - INFO - Chunk 1/009 - Step 2/2: Starting editing and proofreading
+2026-07-03 22:44:03,863 - INFO - Chunk 1/009 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 22:44:04,851 - WARNING - Chunk 1/009 - Proofread API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (1/5)
+2026-07-03 22:44:05,866 - INFO - Chunk 1/009 - Step 2/2: Editing & proofreading (attempt 2)
+2026-07-03 22:46:31,268 - DEBUG - Chunk 1/009 - Proofread response: <proofread>
+Tôi chưa từng biết đến một Trái Đất nào mà ở đó, con người không hề hay biết về sự sống ngoài hành tinh. Tàu thăm dò Cetus đã thu thập các mẫu vật chứa đầy vi khuẩn từ những mạch nước phun...
+2026-07-03 22:46:31,269 - INFO - Chunk 1/009 - Step 2/2: Proofreading success
+2026-07-03 22:46:31,272 - INFO - Chunk 1/009 - Lazy translation similarity: 0.0005
+2026-07-03 22:46:31,273 - INFO - Chunk 001/9 completed in 270.0s
+2026-07-03 22:46:31,273 - INFO - Chunk 2/009 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 22:46:31,274 - DEBUG - Chunk 2/009 - Context: ities, and removed the catheter from the place where catheters go.
+
+Ah, the glamour of space travel.
+2026-07-03 22:46:32,501 - WARNING - Chunk 2/009 - API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (1/5)
+2026-07-03 22:46:33,596 - INFO - Chunk 2/009 - Step 1/2: Translating & extracting glossary (attempt 2)
+2026-07-03 22:46:33,596 - DEBUG - Chunk 2/009 - Context: ities, and removed the catheter from the place where catheters go.
+
+Ah, the glamour of space travel.
+2026-07-03 22:48:55,644 - DEBUG - Chunk 2/009 - Raw response: <translation>
+Tôi có thể nghe thấy tiếng sột soạt khe khẽ của các đồng đội khi họ thực hiện cùng một quy trình thức tỉnh. Những bức tường trên Tàu Merian tuy mỏng, nhưng dù sao vẫn là những bức tường,...
+2026-07-03 22:48:55,658 - INFO - Chunk 2/009 - Extracted: 3 terms, 1 characters
+2026-07-03 22:48:55,659 - INFO - Chunk 2/009 - Step 2/2: Starting editing and proofreading
+2026-07-03 22:48:55,659 - INFO - Chunk 2/009 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 22:51:06,707 - DEBUG - Chunk 2/009 - Proofread response: <proofread>
+Tôi có thể nghe thấy tiếng sột soạt khe khẽ của các đồng đội khi họ thực hiện cùng một quy trình thức tỉnh. Những bức tường trên Tàu Merian tuy mỏng, nhưng dù sao vẫn là những bức tường, v...
+2026-07-03 22:51:06,707 - INFO - Chunk 2/009 - Step 2/2: Proofreading success
+2026-07-03 22:51:06,710 - INFO - Chunk 2/009 - Lazy translation similarity: 0.0007
+2026-07-03 22:51:06,712 - INFO - Chunk 2/009 - Duplicate similarity with chunk 1: 0.8214
+2026-07-03 22:51:06,715 - INFO - Chunk 002/9 completed in 275.4s
+2026-07-03 22:51:06,715 - INFO - Chunk 3/009 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 22:51:06,715 - DEBUG - Chunk 3/009 - Context: stic,’ Chikondi said. There was a pause. ‘I hate catheters.’
+
+I nodded in solidarity. ‘Truer words.’
+2026-07-03 22:53:31,726 - DEBUG - Chunk 3/009 - Raw response: <translation>
+Chúng tôi tìm thấy Elena trong phòng điều khiển, cô đang bắt đầu kiểm tra hệ thống. Tôi tự hỏi liệu cô có cần nhiều thời gian để nhìn lại bản thân mình không, hay đối với cô, tất cả nhữn...
+2026-07-03 22:53:31,752 - INFO - Chunk 3/009 - Extracted: 9 terms, 2 characters
+2026-07-03 22:53:31,752 - INFO - Chunk 3/009 - Step 2/2: Starting editing and proofreading
+2026-07-03 22:53:31,753 - INFO - Chunk 3/009 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 22:53:32,740 - WARNING - Chunk 3/009 - Proofread API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (1/5)
+2026-07-03 22:53:34,093 - INFO - Chunk 3/009 - Step 2/2: Editing & proofreading (attempt 2)
+2026-07-03 22:55:53,302 - DEBUG - Chunk 3/009 - Proofread response: <proofread>
+Chúng tôi tìm thấy Elena trong phòng điều khiển, cô đang tiến hành kiểm tra hệ thống. Tôi tự hỏi liệu cô có cần nhiều thời gian để làm quen với diện mạo mới của mình không, hay đối với cô,...
+2026-07-03 22:55:53,302 - INFO - Chunk 3/009 - Step 2/2: Proofreading success
+2026-07-03 22:55:53,306 - INFO - Chunk 3/009 - Lazy translation similarity: 0.0029
+2026-07-03 22:55:53,308 - INFO - Chunk 3/009 - Duplicate similarity with chunk 2: 0.8147
+2026-07-03 22:55:53,310 - INFO - Chunk 3/009 - Duplicate similarity with chunk 1: 0.7930
+2026-07-03 22:55:53,313 - INFO - Chunk 003/9 completed in 286.6s
+2026-07-03 22:55:53,314 - INFO - Chunk 4/009 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 22:55:53,314 - DEBUG - Chunk 4/009 - Context: b with deadly seriousness. Even if nothing ever does go wrong, I have to prepare as though it might.
+2026-07-03 22:55:53,897 - WARNING - Chunk 4/009 - API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (1/5)
+2026-07-03 22:55:54,920 - INFO - Chunk 4/009 - Step 1/2: Translating & extracting glossary (attempt 2)
+2026-07-03 22:55:54,920 - DEBUG - Chunk 4/009 - Context: b with deadly seriousness. Even if nothing ever does go wrong, I have to prepare as though it might.
+2026-07-03 22:58:12,505 - DEBUG - Chunk 4/009 - Raw response: <translation>
+Trên Aecor, mọi chuyện không hề tồi tệ. Chúng tôi tiến vào bầu khí quyển mà không gặp một trở ngại nào. Không khí đón nhận chúng tôi, và từ đó, các định luật vật lý dẫn lối. Cơ thể tôi t...
+2026-07-03 22:58:12,529 - INFO - Chunk 4/009 - Extracted: 8 terms, 0 characters
+2026-07-03 22:58:12,530 - INFO - Chunk 4/009 - Step 2/2: Starting editing and proofreading
+2026-07-03 22:58:12,530 - INFO - Chunk 4/009 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 22:58:12,988 - WARNING - Chunk 4/009 - Proofread API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (1/5)
+2026-07-03 22:58:14,245 - INFO - Chunk 4/009 - Step 2/2: Editing & proofreading (attempt 2)
+2026-07-03 22:58:15,134 - WARNING - Chunk 4/009 - Proofread API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (2/5)
+2026-07-03 22:58:17,388 - INFO - Chunk 4/009 - Step 2/2: Editing & proofreading (attempt 3)
+2026-07-03 23:00:41,114 - DEBUG - Chunk 4/009 - Proofread response: <proofread>
+Trên Aecor, mọi chuyện không diễn ra như vậy. Chúng tôi tiến vào bầu khí quyển mà không gặp một trở ngại nào. Bầu khí quyển mở lối cho chúng tôi, và từ đó, các định luật vật lý dẫn đường. ...
+2026-07-03 23:00:41,114 - INFO - Chunk 4/009 - Step 2/2: Proofreading success
+2026-07-03 23:00:41,117 - INFO - Chunk 4/009 - Lazy translation similarity: 0.0030
+2026-07-03 23:00:41,118 - INFO - Chunk 4/009 - Duplicate similarity with chunk 3: 0.8279
+2026-07-03 23:00:41,121 - INFO - Chunk 4/009 - Duplicate similarity with chunk 2: 0.8342
+2026-07-03 23:00:41,124 - INFO - Chunk 004/9 completed in 287.8s
+2026-07-03 23:00:41,124 - INFO - Chunk 5/009 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 23:00:41,125 - DEBUG - Chunk 5/009 - Context: ed the summit of wonder, that all natural spectacles would enchant me in much the same way.
+
+Not so.
+2026-07-03 23:00:41,711 - WARNING - Chunk 5/009 - API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (1/5)
+2026-07-03 23:00:43,563 - INFO - Chunk 5/009 - Step 1/2: Translating & extracting glossary (attempt 2)
+2026-07-03 23:00:43,563 - DEBUG - Chunk 5/009 - Context: ed the summit of wonder, that all natural spectacles would enchant me in much the same way.
+
+Not so.
+2026-07-03 23:00:44,228 - WARNING - Chunk 5/009 - API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (2/5)
+2026-07-03 23:00:46,634 - INFO - Chunk 5/009 - Step 1/2: Translating & extracting glossary (attempt 3)
+2026-07-03 23:00:46,634 - DEBUG - Chunk 5/009 - Context: ed the summit of wonder, that all natural spectacles would enchant me in much the same way.
+
+Not so.
+2026-07-03 23:03:14,108 - DEBUG - Chunk 5/009 - Raw response: <translation>
+Tôi bước xuống đường dốc. Những suy nghĩ trong đầu tôi quay cuồng, mơ màng. Tôi bị choáng ngợp đến mức sợ rằng sau này mình sẽ không thể nhớ nổi khoảnh khắc này. Nhưng tôi đã nhớ. Tôi vẫ...
+2026-07-03 23:03:14,123 - INFO - Chunk 5/009 - Extracted: 23 terms, 1 characters
+2026-07-03 23:03:14,123 - INFO - Chunk 5/009 - Step 2/2: Starting editing and proofreading
+2026-07-03 23:03:14,123 - INFO - Chunk 5/009 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 23:03:14,985 - WARNING - Chunk 5/009 - Proofread API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (1/5)
+2026-07-03 23:03:16,026 - INFO - Chunk 5/009 - Step 2/2: Editing & proofreading (attempt 2)
+2026-07-03 23:03:29,015 - WARNING - Chunk 5/009 - Proofread API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (2/5)
+2026-07-03 23:03:31,025 - INFO - Chunk 5/009 - Step 2/2: Editing & proofreading (attempt 3)
+2026-07-03 23:03:32,476 - WARNING - Chunk 5/009 - Proofread API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (3/5)
+2026-07-03 23:03:37,906 - INFO - Chunk 5/009 - Step 2/2: Editing & proofreading (attempt 4)
+2026-07-03 23:06:43,843 - DEBUG - Chunk 5/009 - Proofread response: <proofread>
+Tôi bước xuống đường dốc. Tâm trí tôi quay cuồng, mơ màng. Tôi choáng ngợp đến mức sợ rằng mai này mình sẽ chẳng thể nhớ nổi khoảnh khắc này. Nhưng tôi đã nhớ. Tôi vẫn nhớ. Tôi sẽ không ba...
+2026-07-03 23:06:43,843 - INFO - Chunk 5/009 - Step 2/2: Proofreading success
+2026-07-03 23:06:43,844 - INFO - Chunk 5/009 - Lazy translation similarity: 0.0017
+2026-07-03 23:06:43,846 - INFO - Chunk 5/009 - Duplicate similarity with chunk 4: 0.8394
+2026-07-03 23:06:43,848 - INFO - Chunk 5/009 - Duplicate similarity with chunk 3: 0.8138
+2026-07-03 23:06:43,851 - INFO - Chunk 005/9 completed in 362.7s
+2026-07-03 23:06:43,853 - INFO - Chunk 6/009 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 23:06:43,853 - DEBUG - Chunk 6/009 - Context: forming an industrious bucket brigade. ‘Greenhouse first?’ Chikondi asked.
+
+‘Lab first,’ Elena said.
+2026-07-03 23:09:07,224 - DEBUG - Chunk 6/009 - Raw response: <translation>
+“Tiếc thế,” anh đáp. Phòng thí nghiệm vô trùng là một công việc nặng nhọc hơn, nhưng anh đang rất háo hức bắt tay vào việc trồng rau. Có thể bạn sẽ nghĩ đây là một mong muốn thực tế – vì...
+2026-07-03 23:09:07,244 - INFO - Chunk 6/009 - Extracted: 6 terms, 0 characters
+2026-07-03 23:09:07,245 - INFO - Chunk 6/009 - Step 2/2: Starting editing and proofreading
+2026-07-03 23:09:07,245 - INFO - Chunk 6/009 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 23:11:50,865 - DEBUG - Chunk 6/009 - Proofread response: <proofread>
+“À,” anh đáp. Việc dọn dẹp phòng thí nghiệm vô trùng vất vả hơn, nhưng anh đang rất háo hức bắt tay vào việc trồng rau. Có thể bạn sẽ nghĩ đây là một mong muốn thực tế – vì chỉ riêng bức x...
+2026-07-03 23:11:50,865 - INFO - Chunk 6/009 - Step 2/2: Proofreading success
+2026-07-03 23:11:50,867 - INFO - Chunk 6/009 - Lazy translation similarity: 0.0053
+2026-07-03 23:11:50,869 - INFO - Chunk 6/009 - Duplicate similarity with chunk 5: 0.7632
+2026-07-03 23:11:50,871 - INFO - Chunk 6/009 - Duplicate similarity with chunk 4: 0.7944
+2026-07-03 23:11:50,872 - INFO - Chunk 006/9 completed in 307.0s
+2026-07-03 23:11:50,872 - INFO - Chunk 7/009 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 23:11:50,872 - DEBUG - Chunk 7/009 - Context: , this is one instance in which I prefer to listen for myself – especially if I am listening to him.
+2026-07-03 23:14:32,287 - DEBUG - Chunk 7/009 - Raw response: <translation>
+“Hừm.” Anh mỉm cười xa xăm khi cân nhắc câu hỏi của tôi. Anh mở miệng, rồi lại ngậm lại để suy nghĩ, sau đó mới lên tiếng. “Tôi chưa bao giờ thực sự thích cà phê.”
+
+“Vì caffeine, hay vì ...
+2026-07-03 23:14:32,301 - INFO - Chunk 7/009 - Extracted: 12 terms, 1 characters
+2026-07-03 23:14:32,306 - INFO - Chunk 7/009 - Step 2/2: Starting editing and proofreading
+2026-07-03 23:14:32,306 - INFO - Chunk 7/009 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 23:14:38,389 - WARNING - Chunk 7/009 - Proofread API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (1/5)
+2026-07-03 23:14:40,206 - INFO - Chunk 7/009 - Step 2/2: Editing & proofreading (attempt 2)
+2026-07-03 23:16:47,564 - DEBUG - Chunk 7/009 - Proofread response: <proofread>
+“Hừm.” Anh mỉm cười xa xăm, ngẫm nghĩ về câu hỏi của tôi. Anh định mở lời, rồi lại ngập ngừng, sau đó mới lên tiếng. “Tôi chưa bao giờ thực sự thích cà phê.”
+
+“Vì caffeine, hay vì hương vị...
+2026-07-03 23:16:47,564 - INFO - Chunk 7/009 - Step 2/2: Proofreading success
+2026-07-03 23:16:47,568 - INFO - Chunk 7/009 - Lazy translation similarity: 0.0026
+2026-07-03 23:16:47,572 - INFO - Chunk 7/009 - Duplicate similarity with chunk 6: 0.8227
+2026-07-03 23:16:47,575 - INFO - Chunk 7/009 - Duplicate similarity with chunk 5: 0.7796
+2026-07-03 23:16:47,581 - INFO - Chunk 007/9 completed in 296.7s
+2026-07-03 23:16:47,582 - INFO - Chunk 8/009 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 23:16:47,583 - DEBUG - Chunk 8/009 - Context:  black sky and black ice. But before they could, something else appeared, about a meter ahead of us.
+2026-07-03 23:32:15,121 - DEBUG - Chunk 8/009 - Raw response: ...
+2026-07-03 23:32:15,121 - WARNING - Chunk 8/009 - Format error: Response format is invalid (missing <translation> tags).. Retrying (1/5)
+2026-07-03 23:32:16,266 - INFO - Chunk 8/009 - Step 1/2: Translating & extracting glossary (attempt 2)
+2026-07-03 23:32:16,267 - DEBUG - Chunk 8/009 - Context:  black sky and black ice. But before they could, something else appeared, about a meter ahead of us.
+2026-07-03 23:32:16,869 - WARNING - Chunk 8/009 - API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (2/5)
+2026-07-03 23:32:19,988 - INFO - Chunk 8/009 - Step 1/2: Translating & extracting glossary (attempt 3)
+2026-07-03 23:32:19,988 - DEBUG - Chunk 8/009 - Context:  black sky and black ice. But before they could, something else appeared, about a meter ahead of us.
+2026-07-03 23:34:40,930 - DEBUG - Chunk 8/009 - Raw response: <translation>
+Màu đỏ. Một vệt đỏ huỳnh quang dịu nhẹ, lặng lẽ tỏa sáng xuyên qua một lớp băng mờ.
+
+Nó cử động.
+
+Tôi nên lưu ý rằng những chuyển động tự thân mà mắt người có thể nhận thấy không phải là...
+2026-07-03 23:34:40,957 - INFO - Chunk 8/009 - Extracted: 16 terms, 1 characters
+2026-07-03 23:34:40,960 - INFO - Chunk 8/009 - Step 2/2: Starting editing and proofreading
+2026-07-03 23:34:40,960 - INFO - Chunk 8/009 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 23:36:50,754 - DEBUG - Chunk 8/009 - Proofread response: <proofread>
+Màu đỏ. Một vệt đỏ huỳnh quang dịu nhẹ, lặng lẽ tỏa sáng xuyên qua lớp băng mờ.
+
+Nó cử động.
+
+Tôi nên lưu ý rằng những chuyển động tự thân mà mắt người có thể nhận thấy không phải là dấu h...
+2026-07-03 23:36:50,754 - INFO - Chunk 8/009 - Step 2/2: Proofreading success
+2026-07-03 23:36:50,759 - INFO - Chunk 8/009 - Lazy translation similarity: 0.0083
+2026-07-03 23:36:50,761 - INFO - Chunk 8/009 - Duplicate similarity with chunk 7: 0.7986
+2026-07-03 23:36:50,765 - INFO - Chunk 8/009 - Duplicate similarity with chunk 6: 0.7874
+2026-07-03 23:36:50,768 - INFO - Chunk 008/9 completed in 1203.2s
+2026-07-03 23:36:50,771 - INFO - Chunk 9/009 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 23:36:50,771 - DEBUG - Chunk 9/009 - Context:  and we looked, and we looked, the pixels somehow becoming less clear with each second that went by.
+2026-07-03 23:40:28,426 - DEBUG - Chunk 9/009 - Raw response: <translation>
+"Cứ ghi là chưa kết luận cho đến khi chúng ta tìm thấy thêm mẫu vật," Chikondi nói với Jack.
+
+Jack bắt đầu viết lên bảng phác thảo, ngay dưới hình vẽ sinh vật đó.
+
+Elena nhìn thành quả c...
+2026-07-03 23:40:28,446 - INFO - Chunk 9/009 - Extracted: 12 terms, 1 characters
+2026-07-03 23:40:28,447 - INFO - Chunk 9/009 - Step 2/2: Starting editing and proofreading
+2026-07-03 23:40:28,447 - INFO - Chunk 9/009 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 23:40:29,207 - WARNING - Chunk 9/009 - Proofread API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (1/5)
+2026-07-03 23:40:31,012 - INFO - Chunk 9/009 - Step 2/2: Editing & proofreading (attempt 2)
+2026-07-03 23:42:33,790 - DEBUG - Chunk 9/009 - Proofread response: <proofread>
+"Cứ ghi là chưa kết luận cho đến khi chúng ta tìm thấy thêm mẫu vật," Chikondi nói với Jack.
+
+Jack bắt đầu viết lên bảng phác thảo, ngay dưới hình vẽ sinh vật đó.
+
+Elena nhìn thành quả của...
+2026-07-03 23:42:33,790 - INFO - Chunk 9/009 - Step 2/2: Proofreading success
+2026-07-03 23:42:33,793 - INFO - Chunk 9/009 - Lazy translation similarity: 0.0042
+2026-07-03 23:42:33,795 - INFO - Chunk 9/009 - Duplicate similarity with chunk 8: 0.8064
+2026-07-03 23:42:33,799 - INFO - Chunk 9/009 - Duplicate similarity with chunk 7: 0.7680
+2026-07-03 23:42:33,802 - INFO - Chunk 009/9 completed in 343.0s
+2026-07-03 23:42:33,802 - INFO - Assembling file: test_en_vi.txt
+2026-07-03 23:42:33,803 - INFO - Saved file: test_en_vi.txt

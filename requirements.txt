@@ -1,0 +1,6 @@
+google-genai
+pyyaml>=6.0
+uvicorn
+fastapi
+python-dotenv
+python-multipart

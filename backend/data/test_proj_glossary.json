@@ -1,0 +1,23 @@
+{
+  "_meta": {
+    "project": "test_proj",
+    "genre": "Khoa học viễn tưởng",
+    "created_at": "2026-07-03T22:07:33.264941",
+    "last_updated": "2026-07-03T22:40:48.412654"
+  },
+  "terms": {
+    "starship": "tàu vũ trụ",
+    "torpor": "ngủ đông",
+    "deep space": "không gian sâu thẳm",
+    "navigation console": "bảng điều khiển định vị",
+    "chemical dormancy": "ngủ đông hóa học",
+    "nutrient drip protocol": "giao thức truyền dịch dinh dưỡng",
+    "automated AI voice": "giọng nói của AI tự động",
+    "The Cosmic Drift": "Sự Trôi Dạt Vũ Trụ"
+  },
+  "characters": {
+    "Ariadne": "Ariadne | Tàu vũ trụ |",
+    "Merian": "Merian | Phi hành gia |",
+    "AI": "AI | Trí tuệ nhân tạo của tàu |"
+  }
+}

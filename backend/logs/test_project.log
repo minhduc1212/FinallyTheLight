@@ -1,0 +1,201 @@
+2026-07-04 00:41:33,648 - INFO - --- Pipeline Initialized ---
+2026-07-04 00:41:33,648 - INFO - Project: test_project | Genre: default | Target Lang: vi | Model: gemma-4-31b-it
+2026-07-04 00:41:34,598 - INFO - Starting translation of file: test_small.txt
+2026-07-04 00:41:34,598 - INFO - Source Language: English 🇬🇧 (auto) | Target Language: VI
+2026-07-04 00:41:34,598 - INFO - Total Chunks: 1 | Chunks Stats: {'total_chunks': 1, 'min_tokens': 67, 'max_tokens': 67, 'avg_tokens': 67, 'total_tokens': 67, 'source_lang': 'en', 'chars_per_token': 4.0}
+2026-07-04 00:41:34,598 - INFO - Chunk 1/001 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-04 00:41:34,598 - DEBUG - Chunk 1/001 - Context: (Đây là phần đầu của tác phẩm, không có bối cảnh trước)
+2026-07-04 00:41:34,601 - DEBUG - ==================== API CALL START ====================
+2026-07-04 00:41:34,601 - DEBUG - Model: gemma-4-31b-it | Temperature: 0.25 | Top_P: 0.9
+2026-07-04 00:41:34,601 - DEBUG - System Instruction:
+Bạn là dịch giả văn học chuyên nghiệp dịch sang tiếng Việt. Tiêu chí hàng đầu: Trung thành tuyệt đối với ý nghĩa nguyên tác nhưng câu văn phải tự nhiên và tuân thủ đúng cấu trúc ngữ pháp tiếng Việt.
+
+LUẬT BẮT BUỘC:
+1. BẢO TOÀN NỘI DUNG: Tuyệt đối KHÔNG thêm thắt tình tiết, KHÔNG bỏ sót ý, KHÔNG bóp méo văn phong của tác giả gốc.
+2. NGỮ PHÁP THUẦN VIỆT: Được phép chuyển đổi câu bị động thành chủ động, thêm đại từ hoặc đảo trật tự từ để câu không bị sượng (ví dụ: xử lý câu tỉnh lược), nhưng thông điệp phải y hệt bản gốc.
+3. ĐỊNH DẠNG: Giữ đúng số lượng đoạn văn.
+4. NHẤT QUÁN: Tuân thủ nghiêm ngặt [Glossary] và [Characters] được cung cấp trong thông điệp của người dùng.
+5. CẤU TRÚC ĐẦU RA: Bạn BẮT BUỘC phải trả về kết quả gồm 2 phần được bọc trong các thẻ XML tương ứng, không viết thêm lời mở đầu, lời kết hay bất kỳ bình luận nào bên ngoài:
+   - Bản dịch thô (raw translation) của phân đoạn văn bản nằm trong thẻ <translation>...</translation>.
+   - Bảng thuật ngữ đặc thù mới (terms) và nhân vật mới cùng vai trò, cách xưng hô của họ (characters) được phát hiện/sử dụng trong phân đoạn văn bản này nằm trong thẻ <glossary>...</glossary> dưới dạng một đối tượng JSON thuần túy (không chứa markdown code block, chỉ có chuỗi JSON) theo cấu trúc:
+     {
+       "terms": {
+         "từ_gốc": "bản_dịch_tiếng_Việt"
+       },
+       "characters": {
+         "tên_gốc": "tên_Việt_đề_xuất | vai trò | cách xưng hô giữa các nhân vật trong phân đoạn"
+       }
+     }
+     Nếu không có thuật ngữ hay nhân vật mới nào xuất hiện, hãy để đối tượng rỗng.
+
+LUẬT TRÍCH XUẤT GLOSSARY & NHÂN VẬT (BẮT BUỘC):
+- QUÉT TỪNG CÂU, TỪNG CHỮ: Hãy đọc thật kỹ phân đoạn văn bản cần dịch để phát hiện TẤT CẢ các nhân vật và thuật ngữ đặc thù xuất hiện trong phân đoạn mà chưa có trong danh sách [Glossary] hoặc [Characters] đã cung cấp.
+- KHÔNG ĐƯỢC BỎ SÓT: Dù là nhân vật phụ, tên tàu, địa danh, tên riêng viết hoa hay thuật ngữ nhỏ nhất, bạn cũng PHẢI trích xuất đầy đủ.
+- CÁCH XƯNG HÔ CHI TIẾT: Đối với nhân vật mới, hãy ghi rõ vai trò của họ và cách xưng hô cụ thể giữa họ với nhân vật khác (ví dụ: gọi nhân vật A là "anh", gọi nhân vật B là "sếp").
+- ĐỐI CHIẾU THỂ LOẠI:
+
+6. KHÔNG LỌT TIẾNG NƯỚC NGOÀI: Bản dịch đầu ra BẮT BUỘC phải viết 100% bằng tiếng Việt chuẩn. Tuyệt đối KHÔNG sử dụng các từ liên từ tiếng Anh (như "But", "And", "So", "However",...) hay bất kỳ từ tiếng Anh/ngoại ngữ nào khác trong câu dịch, trừ phi đó là các danh từ riêng được yêu cầu giữ nguyên dạng Latin theo [Glossary] hoặc [Characters].
+
+<translation>
+[Bản dịch tiếng Việt thô hoàn chỉnh, mượt mà, phân đoạn giống văn bản gốc]
+</translation>
+<glossary>
+{
+  "terms": {},
+  "characters": {}
+}
+</glossary>
+
+QUY TẮC NGUỒN (Tiếng Anh):
+- Tên riêng viết hoa (nhân vật, địa danh, tổ chức): GIỮ NGUYÊN. Ví dụ: Ariadne, Earth, NASA.
+- Nếu gặp thuật ngữ khó, hãy tự linh hoạt dịch sang cụm từ tiếng Việt tương đương nhất, không cần giữ nguyên từ gốc, dựa trên ngữ cảnh, bối cảnh tiểu thuyết và phong cách tác giả.
+  Ví dụ: torpor -> ngủ đông
+- Nếu KHÔNG có từ tương đương: giữ nguyên từ gốc + chú thích ngắn trong ngoặc.
+  Ví dụ: somaforming (biến đổi cơ thể).
+
+Thể loại: Mặc định. Dịch sát nghĩa, đúng ngữ cảnh, dễ hiểu, giữ văn phong tác giả, đúng cấu trúc ngữ pháp tiếng Việt. Không thêm thắt, không bỏ sót ý.
+Dịch sang tiếng Việt tự nhiên, đúng ngữ pháp. Xưng hô phù hợp văn hóa Việt và mối quan hệ nhân vật.
+2026-07-04 00:41:34,601 - DEBUG - User Contents (Multi-turn):
+2026-07-04 00:41:34,601 - DEBUG -   [user]: [BỐI CẢNH ĐOẠN TRƯỚC (VĂN BẢN GỐC) - để hiểu ngữ cảnh]
+... (Đây là phần đầu của tác phẩm, không có bối cảnh trước) ...
+
+[VĂN BẢN CẦN DỊCH]
+Chapter 1: The Cosmic Drift
+
+The starship Ariadne drifted silently through the torpor of deep space. Merian stared at the navigation console, his consciousness fading into a chemical dormancy.
+"We must activate the nutrient drip protocol," the automated AI voice chimed.
+2026-07-04 00:42:27,085 - DEBUG - API Call finished in 52.48s
+2026-07-04 00:42:27,086 - DEBUG - Raw response output:
+<translation>
+Chương 1: Sự Trôi Dạt Giữa Vũ Trụ
+
+Tàu vũ trụ Ariadne lặng lẽ trôi giữa sự tĩnh lặng của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển điều hướng, ý thức của anh dần chìm vào trạng thái ngủ đông hóa học.
+"Chúng ta phải kích hoạt quy trình truyền chất dinh dưỡng," giọng nói AI tự động vang lên.
+</translation>
+<glossary>
+{
+  "terms": {
+    "Cosmic Drift": "Sự Trôi Dạt Giữa Vũ Trụ",
+    "torpor": "sự tĩnh lặng",
+    "chemical dormancy": "ngủ đông hóa học",
+    "nutrient drip protocol": "quy trình truyền chất dinh dưỡng"
+  },
+  "characters": {
+    "Ariadne": "Ariadne | Tên tàu vũ trụ | -",
+    "Merian": "Merian | Nhân vật chính | xưng anh",
+    "automated AI voice": "Giọng nói AI tự động | Hệ thống điều khiển tàu | xưng chúng ta"
+  }
+}
+</glossary>
+2026-07-04 00:42:27,086 - DEBUG - Finish Reason: FINISHREASON.STOP
+2026-07-04 00:42:27,086 - DEBUG - ==================== API CALL END ====================
+2026-07-04 00:42:27,086 - DEBUG - Chunk 1/001 - Raw response: <translation>
+Chương 1: Sự Trôi Dạt Giữa Vũ Trụ
+
+Tàu vũ trụ Ariadne lặng lẽ trôi giữa sự tĩnh lặng của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển điều hướng, ý thức của anh dần chì...
+2026-07-04 00:42:27,086 - INFO - [Glossary Add] Term: 'Cosmic Drift' -> 'Sự Trôi Dạt Giữa Vũ Trụ'
+2026-07-04 00:42:27,086 - INFO - [Glossary Add] Term: 'torpor' -> 'sự tĩnh lặng'
+2026-07-04 00:42:27,086 - INFO - [Glossary Add] Term: 'chemical dormancy' -> 'ngủ đông hóa học'
+2026-07-04 00:42:27,086 - INFO - [Glossary Add] Term: 'nutrient drip protocol' -> 'quy trình truyền chất dinh dưỡng'
+2026-07-04 00:42:27,098 - INFO - [Character Add] Name: 'Ariadne' -> 'Ariadne | Tên tàu vũ trụ | -'
+2026-07-04 00:42:27,098 - INFO - [Character Add] Name: 'Merian' -> 'Merian | Nhân vật chính | xưng anh'
+2026-07-04 00:42:27,098 - INFO - [Character Add] Name: 'automated AI voice' -> 'Giọng nói AI tự động | Hệ thống điều khiển tàu | xưng chúng ta'
+2026-07-04 00:42:27,099 - INFO - Chunk 1/001 - Extracted: 4 terms, 3 characters
+2026-07-04 00:42:27,099 - INFO - Chunk 1/001 - Step 2/2: Starting editing and proofreading
+2026-07-04 00:42:27,099 - INFO - Chunk 1/001 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-04 00:42:27,099 - DEBUG - ==================== API CALL START ====================
+2026-07-04 00:42:27,099 - DEBUG - Model: gemma-4-31b-it | Temperature: 0.25 | Top_P: 0.9
+2026-07-04 00:42:27,099 - DEBUG - System Instruction:
+Bạn là biên tập viên văn học chuyên nghiệp tiếng Việt. Nhiệm vụ của bạn là hiệu đính, biên tập và nâng cao chất lượng bản dịch thô (raw translation) từ tiểu thuyết nước ngoài sang tiếng Việt.
+
+YÊU CẦU BIÊN TẬP:
+1. MƯỢT MÀ VÀ TỰ NHIÊN: Cải thiện câu từ để trôi chảy, tự nhiên theo văn phong tiếng Việt văn học, tránh bị sượng, cứng nhắc hoặc có cảm giác dịch từ từng chữ.
+2. BẢO TOÀN NỘI DUNG: Không tự ý thêm thắt tình tiết, không bỏ sót ý hay bóp méo ý nghĩa gốc của đoạn văn.
+3. NHẤT QUÁN THUẬT NGỮ: Đảm bảo sử dụng chính xác các từ khóa trong [Glossary] và [Characters] được cung cấp.
+4. CẤU TRÚC ĐẦU RA: Bạn BẮT BUỘC phải trả về kết quả đã được hiệu đính/biên tập bên trong thẻ XML <proofread>. Không viết thêm lời mở đầu, lời kết hay bất kỳ bình luận nào bên ngoài thẻ này.
+
+<proofread>
+[Bản dịch tiếng Việt đã được biên tập và đánh bóng hoàn chỉnh]
+</proofread>
+2026-07-04 00:42:27,099 - DEBUG - User Content:
+[VĂN BẢN GỐC]
+Chapter 1: The Cosmic Drift
+
+The starship Ariadne drifted silently through the torpor of deep space. Merian stared at the navigation console, his consciousness fading into a chemical dormancy.
+"We must activate the nutrient drip protocol," the automated AI voice chimed.
+
+[BẢN DỊCH THÔ]
+Chương 1: Sự Trôi Dạt Giữa Vũ Trụ
+
+Tàu vũ trụ Ariadne lặng lẽ trôi giữa sự tĩnh lặng của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển điều hướng, ý thức của anh dần chìm vào trạng thái ngủ đông hóa học.
+"Chúng ta phải kích hoạt quy trình truyền chất dinh dưỡng," giọng nói AI tự động vang lên.
+
+[GLOSSARY - DỊCH ĐÚNG THEO BẢNG NÀY]
+- Cosmic Drift → Sự Trôi Dạt Giữa Vũ Trụ
+- torpor → sự tĩnh lặng
+- chemical dormancy → ngủ đông hóa học
+- nutrient drip protocol → quy trình truyền chất dinh dưỡng
+[NHÂN VẬT & XƯNG HÔ - GIỮ NHẤT QUÁN]
+- Ariadne: Ariadne | Tên tàu vũ trụ | -
+- Merian: Merian | Nhân vật chính | xưng anh
+- automated AI voice: Giọng nói AI tự động | Hệ thống điều khiển tàu | xưng chúng ta
+Hãy hiệu đính và đánh bóng bản dịch thô trên dựa trên văn bản gốc và danh sách thuật ngữ/nhân vật đã cung cấp. Giữ đúng số lượng đoạn văn và định dạng dòng.
+2026-07-04 00:42:27,682 - ERROR - Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}} | Code: 500
+2026-07-04 00:42:27,682 - WARNING - Chunk 1/001 - Proofread API error (status: 500): Gemini API Error: 500 INTERNAL. {'error': {'code': 500, 'message': 'Internal error encountered.', 'status': 'INTERNAL'}}. Retrying (1/5)
+2026-07-04 00:42:28,961 - INFO - Chunk 1/001 - Step 2/2: Editing & proofreading (attempt 2)
+2026-07-04 00:42:28,961 - DEBUG - ==================== API CALL START ====================
+2026-07-04 00:42:28,961 - DEBUG - Model: gemma-4-31b-it | Temperature: 0.4 | Top_P: 0.9
+2026-07-04 00:42:28,961 - DEBUG - System Instruction:
+Bạn là biên tập viên văn học chuyên nghiệp tiếng Việt. Nhiệm vụ của bạn là hiệu đính, biên tập và nâng cao chất lượng bản dịch thô (raw translation) từ tiểu thuyết nước ngoài sang tiếng Việt.
+
+YÊU CẦU BIÊN TẬP:
+1. MƯỢT MÀ VÀ TỰ NHIÊN: Cải thiện câu từ để trôi chảy, tự nhiên theo văn phong tiếng Việt văn học, tránh bị sượng, cứng nhắc hoặc có cảm giác dịch từ từng chữ.
+2. BẢO TOÀN NỘI DUNG: Không tự ý thêm thắt tình tiết, không bỏ sót ý hay bóp méo ý nghĩa gốc của đoạn văn.
+3. NHẤT QUÁN THUẬT NGỮ: Đảm bảo sử dụng chính xác các từ khóa trong [Glossary] và [Characters] được cung cấp.
+4. CẤU TRÚC ĐẦU RA: Bạn BẮT BUỘC phải trả về kết quả đã được hiệu đính/biên tập bên trong thẻ XML <proofread>. Không viết thêm lời mở đầu, lời kết hay bất kỳ bình luận nào bên ngoài thẻ này.
+
+<proofread>
+[Bản dịch tiếng Việt đã được biên tập và đánh bóng hoàn chỉnh]
+</proofread>
+2026-07-04 00:42:28,961 - DEBUG - User Content:
+[VĂN BẢN GỐC]
+Chapter 1: The Cosmic Drift
+
+The starship Ariadne drifted silently through the torpor of deep space. Merian stared at the navigation console, his consciousness fading into a chemical dormancy.
+"We must activate the nutrient drip protocol," the automated AI voice chimed.
+
+[BẢN DỊCH THÔ]
+Chương 1: Sự Trôi Dạt Giữa Vũ Trụ
+
+Tàu vũ trụ Ariadne lặng lẽ trôi giữa sự tĩnh lặng của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển điều hướng, ý thức của anh dần chìm vào trạng thái ngủ đông hóa học.
+"Chúng ta phải kích hoạt quy trình truyền chất dinh dưỡng," giọng nói AI tự động vang lên.
+
+[GLOSSARY - DỊCH ĐÚNG THEO BẢNG NÀY]
+- Cosmic Drift → Sự Trôi Dạt Giữa Vũ Trụ
+- torpor → sự tĩnh lặng
+- chemical dormancy → ngủ đông hóa học
+- nutrient drip protocol → quy trình truyền chất dinh dưỡng
+[NHÂN VẬT & XƯNG HÔ - GIỮ NHẤT QUÁN]
+- Ariadne: Ariadne | Tên tàu vũ trụ | -
+- Merian: Merian | Nhân vật chính | xưng anh
+- automated AI voice: Giọng nói AI tự động | Hệ thống điều khiển tàu | xưng chúng ta
+Hãy hiệu đính và đánh bóng bản dịch thô trên dựa trên văn bản gốc và danh sách thuật ngữ/nhân vật đã cung cấp. Giữ đúng số lượng đoạn văn và định dạng dòng.
+2026-07-04 00:43:05,369 - DEBUG - API Call finished in 36.41s
+2026-07-04 00:43:05,370 - DEBUG - Raw response output:
+<proofread>
+Chương 1: Sự Trôi Dạt Giữa Vũ Trụ
+
+Con tàu vũ trụ Ariadne lặng lẽ trôi trong sự tĩnh lặng của không gian sâu thẳm. Merian nhìn trân trân vào bảng điều khiển điều hướng, ý thức anh dần chìm vào trạng thái ngủ đông hóa học.
+"Chúng ta cần kích hoạt quy trình truyền chất dinh dưỡng," giọng nói AI tự động vang lên.
+</proofread>
+2026-07-04 00:43:05,370 - DEBUG - Finish Reason: FINISHREASON.STOP
+2026-07-04 00:43:05,370 - DEBUG - ==================== API CALL END ====================
+2026-07-04 00:43:05,370 - DEBUG - Chunk 1/001 - Proofread response: <proofread>
+Chương 1: Sự Trôi Dạt Giữa Vũ Trụ
+
+Con tàu vũ trụ Ariadne lặng lẽ trôi trong sự tĩnh lặng của không gian sâu thẳm. Merian nhìn trân trân vào bảng điều khiển điều hướng, ý thức anh dần chìm...
+2026-07-04 00:43:05,371 - INFO - Chunk 1/001 - Step 2/2: Proofreading success
+2026-07-04 00:43:05,371 - INFO - Chunk 1/001 - Lazy translation similarity: 0.0191
+2026-07-04 00:43:05,372 - INFO - Chunk 001/1 completed in 90.8s
+2026-07-04 00:43:05,373 - INFO - Assembling file: test_small_vi.txt
+2026-07-04 00:43:05,376 - INFO - Saved file: test_small_vi.txt

@@ -1,0 +1,124 @@
+# Glossary Report - test_en
+Genre: Khoa học viễn tưởng
+Last updated: 2026-07-03T23:40:28.445510
+
+## Thuật ngữ (107 terms)
+- **Cetus probe** → Tàu thăm dò Cetus
+- **Europa** → Europa
+- **Mars** → Sao Hỏa
+- **Tarter space telescope** → Kính thiên văn không gian Tarter
+- **Fraser river** → Sông Fraser
+- **Merian** → Tàu Merian
+- **Aecor** → Aecor
+- **torpor** → trạng thái ngủ đông
+- **torpor chambers** → buồng ngủ đông
+- **somaforming** → biến đổi cơ thể
+- **enzyme patch** → miếng dán enzyme
+- **nutrient drips** → dịch truyền dinh dưỡng
+- **electrode patches** → miếng dán điện cực
+- **exoplanet** → hành tinh ngoài hệ Mặt Trời
+- **hydroponic planters** → chậu thủy canh
+- **metamorphosis** → sự biến thái
+- **catheter** → ống thông tiểu
+- **ground teams** → đội mặt đất
+- **low-Earth orbit** → quỹ đạo thấp của Trái Đất
+- **synthetic reflectin** → reflectin tổng hợp
+- **astroglitter** → bụi kim tuyến vũ trụ
+- **Eridania 8** → Eridania 8
+- **Ceres** → Ceres
+- **The Great Shift** → Cuộc Chuyển dịch Lớn
+- **OCA PNW** → OCA PNW
+- **microclover** → cỏ microclover
+- **Open Cluster Astronautics** → Open Cluster Astronautics
+- **Luna** → Luna
+- **asteroid belt** → vành đai tiểu hành tinh
+- **citizen-funded spaceflight** → chuyến bay vũ trụ do công dân tài trợ
+- **Lawki 6** → Lawki 6
+- **OCA** → OCA
+- **TEVA suits** → bộ đồ TEVA
+- **EVA suits** → bộ đồ EVA
+- **Terrestrial Extra-Vehicular Activity** → Hoạt động ngoài tàu trên mặt đất
+- **Extra-Vehicular Activity** → Hoạt động ngoài tàu
+- **New Millennium Lunar Base** → Căn cứ Mặt Trăng Thiên Niên Kỷ Mới
+- **point-six-G** → 0,6G
+- **airlock** → khoang điều áp
+- **ramp** → đường dốc
+- **red-light spectrum** → quang phổ ánh sáng đỏ
+- **low gravity** → trọng lực thấp
+- **geysers** → mạch nước phun
+- **lander** → tàu đổ bộ
+- **habitat module** → mô-đun cư trú
+- **symbiosis** → cộng sinh
+- **headlamps** → đèn đeo đầu
+- **vents** → lỗ thoát khí
+- **comms** → hệ thống liên lạc
+- **brine** → nước muối
+- **auger** → máy khoan xoắn
+- **inflatable habitat modules** → mô-đun cư trú bơm phồng
+- **clean lab** → phòng thí nghiệm vô trùng
+- **containment units** → đơn vị chứa
+- **turbidity tubes** → ống đo độ đục
+- **quadrats** → khung định vị
+- **wildlife blinds** → lán ẩn nấp quan sát động vật
+- **core samplers** → thiết bị lấy mẫu lõi
+- **aerodrones** → máy bay không người lái
+- **hydrodrones** → thiết bị lặn không người lái
+- **bucket brigade** → dây chuyền chuyền tay
+- **inflatable modules** → mô-đun bơm hơi
+- **medical bay** → khoang y tế
+- **pulse reader** → máy đo nhịp tim
+- **stethoscope** → ống nghe
+- **patch check-ups** → kiểm tra miếng dán
+- **full physicals** → khám sức khỏe tổng quát
+- **baseline profile** → hồ sơ chỉ số cơ bản
+- **trichromatic sight** → thị giác tam sắc
+- **gene therapy** → liệu pháp gen
+- **second puberty** → tuổi dậy thì lần thứ hai
+- **Badain Jaran** → Badain Jaran
+- **synthetic skins** → lớp da tổng hợp
+- **rec room** → phòng giải trí
+- **news bundle** → gói tin tức
+- **linguistic drift** → sự biến đổi ngôn ngữ
+- **TEVA suit** → bộ đồ TEVA
+- **Tampico** → Tampico
+- **Cascadia-Pacific Republic** → Cộng hòa Cascadia-Pacific
+- **cubesats** → vệ tinh cubesat
+- **phenotypes** → kiểu hình
+- **taxonomy** → phân loại học
+- **phyla** → ngành
+- **Annelid Approximate** → Giả phân đốt
+- **AnA** → AnA
+- **Cnidarian Approximate** → Giả tế gai
+- **CA** → CA
+- **Avian Reptile Approximate** → Giả bò sát chim
+- **AvA** → AvA
+- **Amphibian Approximate** → Giả lưỡng cư
+- **AA** → AA
+- **Mammal Approximate** → Giả thú
+- **MA** → MA
+- **New Phyla** → Ngành mới
+- **NP** → NP
+- **camera trap** → bẫy ảnh
+- **image recognition software** → phần mềm nhận diện hình ảnh
+- **Tubuspiscis quesadae** → Tubuspiscis quesadae
+- **Doliopiscis aecorii** → Doliopiscis aecorii
+- **Pigertapete aecorii** → Pigertapete aecorii
+- **Jemison Peninsula** → Bán đảo Jemison
+- **Misty Plateau** → Cao nguyên Sương mù
+- **ice cores** → mẫu lõi băng
+- **wind logs** → nhật ký gió
+- **melt measurements** → đo lường độ tan chảy
+- **Petri dishes** → đĩa Petri
+- **growth medium** → môi trường nuôi cấy
+
+## Nhân vật (10 characters)
+- **Ariadne**: Ariadne | Phi hành gia, người kể chuyện, Nhân vật chính, phi hành gia, Người kể chuyện, phi hành gia | Tôi / Cô / Xưng hô: Tôi - anh/cô / Xưng hô: Tôi - cô (với Elena), tôi - anh (với Jack/Chikondi)
+- **mother**: Mẹ của Ariadne | Nhân vật phụ | Bà / Mẹ
+- **father**: Cha của Ariadne | Nhân vật phụ | Ông / Cha
+- **Mother**: Mẹ | Phụ huynh của Ariadne | Bà / Mẹ
+- **Father**: Cha | Phụ huynh của Ariadne | Ông / Cha
+- **Chikondi**: Chikondi | Phi hành gia, thành viên trẻ nhất phi hành đoàn | Xưng hô: Tôi - anh / Anh - tôi
+- **Elena**: Elena | Phi hành gia kỳ cựu, người lớn tuổi nhất phi hành đoàn | Xưng hô: Cô - tôi / Tôi - cô
+- **Jack**: Jack | Phi hành gia, bạn thân của Ariadne | Xưng hô: Anh - tôi / Tôi - anh
+- **Amado Guinto**: Amado Guinto | Chuyên viên truyền thông của OCA PNW | Xưng hô: Tôi - các bạn (trong video)
+- **O'Neill**: O'Neill | Phi hành gia, kỹ sư bay, người kể chuyện | Xưng hô: Tôi - anh/cô

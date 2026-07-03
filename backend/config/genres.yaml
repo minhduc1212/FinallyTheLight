@@ -1,0 +1,159 @@
+# ============================================================
+# GENRE STYLES - Style hint injected into each prompt
+# Keep SHORT (< 30 tokens each) for Gemma4 efficiency
+# ============================================================
+
+genres:
+  default:
+    label: "Mặc định"
+    hint: "Dịch sát nghĩa, đúng ngữ cảnh, dễ hiểu, giữ văn phong tác giả, đúng cấu trúc ngữ pháp tiếng Việt. Không thêm thắt, không bỏ sót ý."
+    term_categories: []
+
+  scifi:
+    label: "Khoa học viễn tưởng"
+    hint: "Ưu tiên thuật ngữ kỹ thuật chính xác, nhất quán xuyên suốt. Văn phong lạnh, khoa học, súc tích, logic chặt chẽ."
+    term_categories: ["công nghệ", "sinh học", "vũ trụ", "AI", "vật lý", "tên tàu/robot"]
+
+  fantasy:
+    label: "Fantasy / Huyền ảo"
+    hint: "Giữ sắc thái huyền bí, cổ điển phương Tây. Câu văn giàu hình ảnh. Thuật ngữ phép thuật, sinh vật, thế giới quan nhất quán."
+    term_categories: ["phép thuật", "sinh vật", "địa danh", "danh hiệu", "chủng tộc"]
+
+  romance:
+    label: "Lãng mạn"
+    hint: "Văn phong mượt mà, cảm xúc, tinh tế. Chú ý sắc thái tình cảm, ánh mắt, cử chỉ. Lời thoại tự nhiên, ngọt ngào."
+    term_categories: ["cảm xúc", "mối quan hệ", "địa điểm lãng mạn", "xưng hô đôi lứa"]
+
+  thriller:
+    label: "Thriller / Hồi hộp"
+    hint: "Nhịp nhanh, căng thẳng, súc tích. Câu ngắn, dồn dập. Không dài dòng, giữ kịch tính đến cuối câu."
+    term_categories: ["vũ khí", "tổ chức", "địa điểm", "thủ thuật", "biệt danh đặc vụ"]
+
+  historical:
+    label: "Lịch sử"
+    hint: "Văn phong trang trọng, cổ điển. Thuật ngữ thời đại phù hợp. Danh xưng, quan chế, lễ nghi lịch sử chính xác."
+    term_categories: ["chức quan", "địa danh cổ", "phong tục", "vũ khí cổ", "niên hiệu"]
+
+  horror:
+    label: "Kinh dị"
+    hint: "Bầu không khí u ám, rùng rợn. Dùng từ gợi sợ hãi, ghê tởm. Nhịp chậm rãi, dồn nén, đáng sợ."
+    term_categories: ["sinh vật", "nghi lễ", "địa điểm", "hiện tượng siêu nhiên", "âm thanh ghê rợn"]
+
+  xianxia:
+    label: "Tiên hiệp / Huyền huyễn"
+    hint: "Giữ nguyên thuật ngữ tu luyện, cảnh giới, công pháp theo Hán-Việt. Văn phong cao ngạo, bay bổng, giàu chất thơ."
+    term_categories: ["cảnh giới", "công pháp", "linh khí", "môn phái", "bảo vật", "đan dược"]
+
+  wuxia:
+    label: "Võ hiệp"
+    hint: "Thuật ngữ võ thuật, giang hồ chuẩn Hán-Việt. Văn phong trượng nghĩa, hào sảng, khí phách anh hùng."
+    term_categories: ["võ công", "môn phái", "binh khí", "giang hồ", "chiêu thức"]
+
+  isekai:
+    label: "Isekai / Chuyển sinh"
+    hint: "Nhân vật chuyển sinh/xuyên không sang thế giới khác. Giữ cảm giác lạ lẫm buổi đầu, đối chiếu kiến thức đời thực với thế giới mới."
+    term_categories: ["thế giới mới", "chuyển sinh", "kiến thức đời thực", "chủng tộc/dị giới", "chức nghiệp"]
+
+  xuanhuan:
+    label: "Huyền huyễn"
+    hint: "Kết hợp tu luyện cổ điển và yếu tố kỳ ảo phương Tây. Phong thái hào hùng, bá đạo, thuật ngữ võ học/phép thuật đan xen."
+    term_categories: ["công pháp", "huyết thống", "linh thú", "vũ khí", "bí cảnh", "đại lục"]
+
+  urban:
+    label: "Đô thị / Hiện đại"
+    hint: "Bối cảnh hiện đại. Xưng hô tự nhiên, đời thường, ngôn ngữ gần gũi. Tránh từ Hán-Việt quá cổ trang."
+    term_categories: ["chức danh", "địa danh hiện đại", "biệt danh", "tiếng lóng", "thương hiệu"]
+
+  system:
+    label: "Hệ thống / Võng du"
+    hint: "Giao diện trò chơi, bảng chỉ số, nhiệm vụ, phần thưởng. Dịch thuật ngữ game chuẩn xác, thống nhất và mượt mà."
+    term_categories: ["nhiệm vụ", "chỉ số", "vật phẩm", "danh hiệu", "kỹ năng game"]
+
+  romcom:
+    label: "Romcom / Học đường"
+    hint: "Hài hước lãng mạn, thanh xuân học đường. Văn phong nhẹ nhàng, tươi trẻ, hội thoại tự nhiên, tinh nghịch, dí dỏm."
+    term_categories: ["học đường", "biệt danh", "tình cảm", "tiếng lóng học sinh", "câu lạc bộ"]
+
+  apocalypse:
+    label: "Mạt thế / Sinh tồn"
+    hint: "Thế giới tận thế, zombie, biến dị. Không khí u ám, kịch tính, khốc liệt. Câu văn dồn dập khi mô tả sinh tồn."
+    term_categories: ["biến dị", "zombie", "căn cứ", "kỹ năng sinh tồn", "vật tư"]
+
+  mystery:
+    label: "Trinh thám / Bí ẩn"
+    hint: "Nhịp điệu chậm rãi, kịch tính, suy luận logic chặt chẽ. Chú trọng mô tả chi tiết hiện trường, tạo cảm giác tò mò."
+    term_categories: ["manh mối", "hiện trường", "tội phạm", "thuật ngữ pháp y", "chứng cứ"]
+
+  action:
+    label: "Hành động"
+    hint: "Câu ngắn, động từ mạnh, nhịp độ nhanh. Mô tả pha hành động rõ ràng, dứt khoát, giàu chuyển động."
+    term_categories: ["chiến đấu", "vũ khí", "kỹ thuật chiến đấu", "địa hình"]
+
+  comedy:
+    label: "Hài hước"
+    hint: "Văn phong dí dỏm, tự nhiên. Giữ nhịp gây cười, chơi chữ nếu có thể chuyển ngữ hợp lý. Đừng làm mất nét hài."
+    term_categories: ["tiếng lóng", "biệt danh", "câu cửa miệng", "tình huống hài"]
+
+  slice_of_life:
+    label: "Đời thường"
+    hint: "Văn phong chậm rãi, ấm áp, chân thực. Chú trọng chi tiết đời sống thường nhật, cảm xúc tinh tế, tự nhiên."
+    term_categories: ["sinh hoạt", "ẩm thực", "địa danh đời thường", "xưng hô gia đình"]
+
+  tragedy:
+    label: "Bi kịch"
+    hint: "Văn phong trầm buồn, sâu lắng, giàu cảm xúc nội tâm. Giữ nhịp chậm, day dứt, tránh sáo rỗng."
+    term_categories: ["cảm xúc", "mối quan hệ", "số phận", "ký ức"]
+
+  war:
+    label: "Chiến tranh / Quân sự"
+    hint: "Văn phong nghiêm túc, chính xác về quân hàm, chiến thuật. Nhịp căng thẳng khi mô tả trận chiến, kỷ luật quân đội."
+    term_categories: ["quân hàm", "vũ khí quân sự", "chiến thuật", "đơn vị", "địa danh chiến trường"]
+
+  sports:
+    label: "Thể thao"
+    hint: "Nhịp nhanh, hào hứng, giàu năng lượng. Thuật ngữ chuyên môn môn thể thao chính xác. Mô tả pha thi đấu sống động."
+    term_categories: ["luật thi đấu", "vị trí thi đấu", "kỹ thuật", "giải đấu"]
+
+  mecha:
+    label: "Cơ giáp / Robot"
+    hint: "Thuật ngữ kỹ thuật cơ giáp, vũ khí chính xác, nhất quán. Văn phong hoành tráng khi mô tả chiến đấu cơ giáp."
+    term_categories: ["cơ giáp", "vũ khí", "công nghệ", "phi công/pilot"]
+
+  danmei:
+    label: "Đam mỹ (BL)"
+    hint: "Văn phong tinh tế, giàu cảm xúc, giữ sắc thái tình cảm nam-nam theo nguyên tác. Xưng hô phù hợp mối quan hệ."
+    term_categories: ["cảm xúc", "xưng hô đôi lứa", "mối quan hệ", "biệt danh thân mật"]
+
+  baihe:
+    label: "Bách hợp (GL)"
+    hint: "Văn phong tinh tế, giàu cảm xúc, giữ sắc thái tình cảm nữ-nữ theo nguyên tác. Xưng hô phù hợp mối quan hệ."
+    term_categories: ["cảm xúc", "xưng hô đôi lứa", "mối quan hệ", "biệt danh thân mật"]
+
+  cooking:
+    label: "Ẩm thực"
+    hint: "Mô tả món ăn sinh động, gợi vị giác. Thuật ngữ nấu ăn, nguyên liệu chính xác, dễ hình dung."
+    term_categories: ["nguyên liệu", "món ăn", "dụng cụ nấu ăn", "kỹ thuật chế biến"]
+
+# Target language configs
+languages:
+  vi:
+    name: "Tiếng Việt"
+    instruction: "Dịch sang tiếng Việt tự nhiên, đúng ngữ pháp. Xưng hô phù hợp văn hóa Việt và mối quan hệ nhân vật."
+  zh:
+    name: "中文 (简体)"
+    instruction: "翻译成简体中文，保持自然流畅、符合语境的表达，用词准确一致。"
+  en:
+    name: "English"
+    instruction: "Translate to natural, idiomatic English. Match the author's register, tone, and pacing."
+  ja:
+    name: "日本語"
+    instruction: "日本語に翻訳する。文脈に合った自然で流暢な文体と敬語表現を保つ。"
+  ko:
+    name: "한국어"
+    instruction: "한국어로 번역하세요. 문맥에 맞는 자연스러운 문체와 존댓말/반말을 유지하세요."
+  id:
+    name: "Bahasa Indonesia"
+    instruction: "Terjemahkan ke Bahasa Indonesia yang natural, mengalir, dan sesuai konteks cerita."
+  th:
+    name: "ภาษาไทย"
+    instruction: "แปลเป็นภาษาไทยที่เป็นธรรมชาติ ลื่นไหล และเหมาะสมกับบริบทของเรื่อง"

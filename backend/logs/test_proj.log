@@ -1,0 +1,244 @@
+2026-07-03 22:40:37,274 - INFO - --- Pipeline Initialized ---
+2026-07-03 22:40:37,274 - INFO - Project: test_proj | Genre: scifi | Target Lang: vi | Model: gemini-2.5-flash
+2026-07-03 22:40:37,860 - INFO - Starting translation of file: test_small.txt
+2026-07-03 22:40:37,860 - INFO - Source Language: English 🇬🇧 (auto) | Target Language: VI
+2026-07-03 22:40:37,860 - INFO - Total Chunks: 1 | Chunks Stats: {'total_chunks': 1, 'min_tokens': 67, 'max_tokens': 67, 'avg_tokens': 67, 'total_tokens': 67, 'source_lang': 'en', 'chars_per_token': 4.0}
+2026-07-03 22:40:37,860 - INFO - Chunk 1/001 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 22:40:37,860 - DEBUG - Chunk 1/001 - Context: (Đây là phần đầu của tác phẩm, không có bối cảnh trước)
+2026-07-03 22:40:48,411 - DEBUG - Chunk 1/001 - Raw response: <translation>
+Chương 1: Sự Trôi Dạt Vũ Trụ
+
+Tàu vũ trụ Ariadne lặng lẽ trôi dạt xuyên qua sự ngủ đông của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển định vị, ý thức của anh dần chì...
+2026-07-03 22:40:48,423 - INFO - Chunk 1/001 - Extracted: 1 terms, 0 characters
+2026-07-03 22:40:48,423 - INFO - Chunk 1/001 - Step 2/2: Starting editing and proofreading
+2026-07-03 22:40:48,423 - INFO - Chunk 1/001 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 22:40:48,537 - WARNING - Chunk 1/001 - Proofread API error (status: 429): Gemini API Error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 10.24652053s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '10s'}]}}. Retrying (1/5)
+2026-07-03 22:40:50,195 - INFO - Chunk 1/001 - Step 2/2: Editing & proofreading (attempt 2)
+2026-07-03 22:40:50,309 - WARNING - Chunk 1/001 - Proofread API error (status: 429): Gemini API Error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 8.478125042s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '8s'}]}}. Retrying (2/5)
+2026-07-03 22:40:54,301 - INFO - Chunk 1/001 - Step 2/2: Editing & proofreading (attempt 3)
+2026-07-03 22:40:54,407 - WARNING - Chunk 1/001 - Proofread API error (status: 429): Gemini API Error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 4.378075874s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '4s'}]}}. Retrying (3/5)
+2026-07-03 22:41:01,247 - INFO - Chunk 1/001 - Step 2/2: Editing & proofreading (attempt 4)
+2026-07-03 22:41:01,416 - WARNING - Chunk 1/001 - Proofread API error (status: 429): Gemini API Error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 57.366062555s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '57s'}]}}. Retrying (4/5)
+2026-07-03 22:41:15,083 - INFO - Chunk 1/001 - Step 2/2: Editing & proofreading (attempt 5)
+2026-07-03 22:41:21,292 - DEBUG - Chunk 1/001 - Proofread response: <proofread>
+Chương 1: Sự Trôi Dạt Vũ Trụ
+
+Tàu vũ trụ Ariadne lặng lẽ trôi dạt giữa sự ngủ đông của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển định vị, ý thức của anh dần chìm vào t...
+2026-07-03 22:41:21,292 - INFO - Chunk 1/001 - Step 2/2: Proofreading success
+2026-07-03 22:41:21,292 - INFO - Chunk 1/001 - Lazy translation similarity: 0.0178
+2026-07-03 22:41:21,294 - INFO - Chunk 001/1 completed in 43.4s
+2026-07-03 22:41:21,294 - INFO - Assembling file: test_small_vi.txt
+2026-07-03 22:41:21,295 - INFO - Saved file: test_small_vi.txt
+2026-07-03 23:45:14,369 - INFO - --- Pipeline Initialized ---
+2026-07-03 23:45:14,369 - INFO - Project: test_proj | Genre: scifi | Target Lang: vi | Model: gemini-2.5-flash
+2026-07-03 23:45:14,787 - INFO - Starting translation of file: test_small.txt
+2026-07-03 23:45:14,787 - INFO - Source Language: English 🇬🇧 (auto) | Target Language: VI
+2026-07-03 23:45:14,787 - INFO - Total Chunks: 1 | Chunks Stats: {'total_chunks': 1, 'min_tokens': 67, 'max_tokens': 67, 'avg_tokens': 67, 'total_tokens': 67, 'source_lang': 'en', 'chars_per_token': 4.0}
+2026-07-03 23:45:14,787 - INFO - Chunk 1/001 - Step 1/2: Translating & extracting glossary (attempt 1)
+2026-07-03 23:45:14,787 - DEBUG - Chunk 1/001 - Context: (Đây là phần đầu của tác phẩm, không có bối cảnh trước)
+2026-07-03 23:45:14,787 - DEBUG - ==================== API CALL START ====================
+2026-07-03 23:45:14,787 - DEBUG - Model: gemini-2.5-flash | Temperature: 0.25 | Top_P: 0.9
+2026-07-03 23:45:14,787 - DEBUG - System Instruction:
+Bạn là dịch giả văn học chuyên nghiệp dịch sang tiếng Việt. Tiêu chí hàng đầu: Trung thành tuyệt đối với ý nghĩa nguyên tác nhưng câu văn phải tự nhiên và tuân thủ đúng cấu trúc ngữ pháp tiếng Việt.
+
+LUẬT BẮT BUỘC:
+1. BẢO TOÀN NỘI DUNG: Tuyệt đối KHÔNG thêm thắt tình tiết, KHÔNG bỏ sót ý, KHÔNG bóp méo văn phong của tác giả gốc.
+2. NGỮ PHÁP THUẦN VIỆT: Được phép chuyển đổi câu bị động thành chủ động, thêm đại từ hoặc đảo trật tự từ để câu không bị sượng (ví dụ: xử lý câu tỉnh lược), nhưng thông điệp phải y hệt bản gốc.
+3. ĐỊNH DẠNG: Giữ đúng số lượng đoạn văn.
+4. NHẤT QUÁN: Tuân thủ nghiêm ngặt [Glossary] và [Characters] được cung cấp trong thông điệp của người dùng.
+5. CẤU TRÚC ĐẦU RA: Bạn BẮT BUỘC phải trả về kết quả gồm 2 phần được bọc trong các thẻ XML tương ứng, không viết thêm lời mở đầu, lời kết hay bất kỳ bình luận nào bên ngoài:
+   - Bản dịch thô (raw translation) của phân đoạn văn bản nằm trong thẻ <translation>...</translation>.
+   - Bảng thuật ngữ đặc thù mới (terms) và nhân vật mới cùng vai trò, cách xưng hô của họ (characters) được phát hiện/sử dụng trong phân đoạn văn bản này nằm trong thẻ <glossary>...</glossary> dưới dạng một đối tượng JSON thuần túy (không chứa markdown code block, chỉ có chuỗi JSON) theo cấu trúc:
+     {
+       "terms": {
+         "từ_gốc": "bản_dịch_tiếng_Việt"
+       },
+       "characters": {
+         "tên_gốc": "tên_Việt_đề_xuất | vai trò | cách xưng hô giữa các nhân vật trong phân đoạn"
+       }
+     }
+     Nếu không có thuật ngữ hay nhân vật mới nào xuất hiện, hãy để đối tượng rỗng.
+
+LUẬT TRÍCH XUẤT GLOSSARY & NHÂN VẬT (BẮT BUỘC):
+- QUÉT TỪNG CÂU, TỪNG CHỮ: Hãy đọc thật kỹ phân đoạn văn bản cần dịch để phát hiện TẤT CẢ các nhân vật và thuật ngữ đặc thù xuất hiện trong phân đoạn mà chưa có trong danh sách [Glossary] hoặc [Characters] đã cung cấp.
+- KHÔNG ĐƯỢC BỎ SÓT: Dù là nhân vật phụ, tên tàu, địa danh, tên riêng viết hoa hay thuật ngữ nhỏ nhất, bạn cũng PHẢI trích xuất đầy đủ.
+- CÁCH XƯNG HÔ CHI TIẾT: Đối với nhân vật mới, hãy ghi rõ vai trò của họ và cách xưng hô cụ thể giữa họ với nhân vật khác (ví dụ: gọi nhân vật A là "anh", gọi nhân vật B là "sếp").
+- ĐỐI CHIẾU THỂ LOẠI:
+  - ĐỐI CHIẾU THỂ LOẠI: Phân đoạn này thuộc thể loại 'Khoa học viễn tưởng'. Chú ý trích xuất các thuật ngữ thuộc danh mục sau: công nghệ, sinh học, vũ trụ, AI, vật lý, tên tàu/robot.
+
+6. KHÔNG LỌT TIẾNG NƯỚC NGOÀI: Bản dịch đầu ra BẮT BUỘC phải viết 100% bằng tiếng Việt chuẩn. Tuyệt đối KHÔNG sử dụng các từ liên từ tiếng Anh (như "But", "And", "So", "However",...) hay bất kỳ từ tiếng Anh/ngoại ngữ nào khác trong câu dịch, trừ phi đó là các danh từ riêng được yêu cầu giữ nguyên dạng Latin theo [Glossary] hoặc [Characters].
+
+<translation>
+[Bản dịch tiếng Việt thô hoàn chỉnh, mượt mà, phân đoạn giống văn bản gốc]
+</translation>
+<glossary>
+{
+  "terms": {},
+  "characters": {}
+}
+</glossary>
+
+QUY TẮC NGUỒN (Tiếng Anh):
+- Tên riêng viết hoa (nhân vật, địa danh, tổ chức): GIỮ NGUYÊN. Ví dụ: Ariadne, Earth, NASA.
+- Nếu gặp thuật ngữ khó, hãy tự linh hoạt dịch sang cụm từ tiếng Việt tương đương nhất, không cần giữ nguyên từ gốc, dựa trên ngữ cảnh, bối cảnh tiểu thuyết và phong cách tác giả.
+  Ví dụ: torpor -> ngủ đông
+- Nếu KHÔNG có từ tương đương: giữ nguyên từ gốc + chú thích ngắn trong ngoặc.
+  Ví dụ: somaforming (biến đổi cơ thể).
+
+Thể loại: Khoa học viễn tưởng. Ưu tiên thuật ngữ kỹ thuật chính xác, nhất quán xuyên suốt. Văn phong lạnh, khoa học, súc tích, logic chặt chẽ.
+Dịch sang tiếng Việt tự nhiên, đúng ngữ pháp. Xưng hô phù hợp văn hóa Việt và mối quan hệ nhân vật.
+
+[GLOSSARY - DỊCH ĐÚNG THEO BẢNG NÀY]
+- starship → tàu vũ trụ
+- torpor → ngủ đông
+- deep space → không gian sâu thẳm
+- navigation console → bảng điều khiển định vị
+- chemical dormancy → ngủ đông hóa học
+- nutrient drip protocol → giao thức truyền dịch dinh dưỡng
+- automated AI voice → giọng nói của AI tự động
+- The Cosmic Drift → Sự Trôi Dạt Vũ Trụ
+
+[NHÂN VẬT & XƯNG HÔ - GIỮ NHẤT QUÁN]
+- Ariadne: Ariadne | Tàu vũ trụ |
+- Merian: Merian | Phi hành gia |
+- AI: AI | Trí tuệ nhân tạo của tàu |
+2026-07-03 23:45:14,788 - DEBUG - User Contents (Multi-turn):
+2026-07-03 23:45:14,788 - DEBUG -   [user]: [BỐI CẢNH ĐOẠN TRƯỚC (VĂN BẢN GỐC) - để hiểu ngữ cảnh]
+... (Đây là phần đầu của tác phẩm, không có bối cảnh trước) ...
+
+[VĂN BẢN CẦN DỊCH]
+Chapter 1: The Cosmic Drift
+
+The starship Ariadne drifted silently through the torpor of deep space. Merian stared at the navigation console, his consciousness fading into a chemical dormancy.
+"We must activate the nutrient drip protocol," the automated AI voice chimed.
+2026-07-03 23:45:23,366 - DEBUG - API Call finished in 8.58s
+2026-07-03 23:45:23,366 - DEBUG - Raw response output:
+<translation>
+Chương 1: Sự Trôi Dạt Vũ Trụ
+
+Tàu vũ trụ Ariadne lẳng lặng trôi trong trạng thái ngủ đông của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển định vị, ý thức của anh dần chìm vào trạng thái ngủ đông hóa học.
+
+"Chúng ta phải kích hoạt giao thức truyền dịch dinh dưỡng," giọng nói của AI tự động vang lên.
+</translation>
+<glossary>
+{
+  "terms": {},
+  "characters": {}
+}
+</glossary>
+2026-07-03 23:45:23,366 - DEBUG - Finish Reason: FINISHREASON.STOP
+2026-07-03 23:45:23,366 - DEBUG - ==================== API CALL END ====================
+2026-07-03 23:45:23,366 - DEBUG - Chunk 1/001 - Raw response: <translation>
+Chương 1: Sự Trôi Dạt Vũ Trụ
+
+Tàu vũ trụ Ariadne lẳng lặng trôi trong trạng thái ngủ đông của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển định vị, ý thức của anh dần c...
+2026-07-03 23:45:23,369 - INFO - Chunk 1/001 - Extracted: 0 terms, 0 characters
+2026-07-03 23:45:23,369 - INFO - Chunk 1/001 - Step 2/2: Starting editing and proofreading
+2026-07-03 23:45:23,369 - INFO - Chunk 1/001 - Step 2/2: Editing & proofreading (attempt 1)
+2026-07-03 23:45:23,369 - DEBUG - ==================== API CALL START ====================
+2026-07-03 23:45:23,369 - DEBUG - Model: gemini-2.5-flash | Temperature: 0.25 | Top_P: 0.9
+2026-07-03 23:45:23,370 - DEBUG - System Instruction:
+Bạn là biên tập viên văn học chuyên nghiệp tiếng Việt. Nhiệm vụ của bạn là hiệu đính, biên tập và nâng cao chất lượng bản dịch thô (raw translation) từ tiểu thuyết nước ngoài sang tiếng Việt.
+
+YÊU CẦU BIÊN TẬP:
+1. MƯỢT MÀ VÀ TỰ NHIÊN: Cải thiện câu từ để trôi chảy, tự nhiên theo văn phong tiếng Việt văn học, tránh bị sượng, cứng nhắc hoặc có cảm giác dịch từ từng chữ.
+2. BẢO TOÀN NỘI DUNG: Không tự ý thêm thắt tình tiết, không bỏ sót ý hay bóp méo ý nghĩa gốc của đoạn văn.
+3. NHẤT QUÁN THUẬT NGỮ: Đảm bảo sử dụng chính xác các từ khóa trong [Glossary] và [Characters] được cung cấp.
+4. CẤU TRÚC ĐẦU RA: Bạn BẮT BUỘC phải trả về kết quả đã được hiệu đính/biên tập bên trong thẻ XML <proofread>. Không viết thêm lời mở đầu, lời kết hay bất kỳ bình luận nào bên ngoài thẻ này.
+
+<proofread>
+[Bản dịch tiếng Việt đã được biên tập và đánh bóng hoàn chỉnh]
+</proofread>
+2026-07-03 23:45:23,370 - DEBUG - User Content:
+[VĂN BẢN GỐC]
+Chapter 1: The Cosmic Drift
+
+The starship Ariadne drifted silently through the torpor of deep space. Merian stared at the navigation console, his consciousness fading into a chemical dormancy.
+"We must activate the nutrient drip protocol," the automated AI voice chimed.
+
+[BẢN DỊCH THÔ]
+Chương 1: Sự Trôi Dạt Vũ Trụ
+
+Tàu vũ trụ Ariadne lẳng lặng trôi trong trạng thái ngủ đông của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển định vị, ý thức của anh dần chìm vào trạng thái ngủ đông hóa học.
+
+"Chúng ta phải kích hoạt giao thức truyền dịch dinh dưỡng," giọng nói của AI tự động vang lên.
+
+[GLOSSARY - DỊCH ĐÚNG THEO BẢNG NÀY]
+- starship → tàu vũ trụ
+- torpor → ngủ đông
+- deep space → không gian sâu thẳm
+- navigation console → bảng điều khiển định vị
+- chemical dormancy → ngủ đông hóa học
+- nutrient drip protocol → giao thức truyền dịch dinh dưỡng
+- automated AI voice → giọng nói của AI tự động
+- The Cosmic Drift → Sự Trôi Dạt Vũ Trụ
+[NHÂN VẬT & XƯNG HÔ - GIỮ NHẤT QUÁN]
+- Ariadne: Ariadne | Tàu vũ trụ |
+- Merian: Merian | Phi hành gia |
+- AI: AI | Trí tuệ nhân tạo của tàu |
+Hãy hiệu đính và đánh bóng bản dịch thô trên dựa trên văn bản gốc và danh sách thuật ngữ/nhân vật đã cung cấp. Giữ đúng số lượng đoạn văn và định dạng dòng.
+2026-07-03 23:45:23,630 - ERROR - Gemini API Error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 35.072143321s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '35s'}]}} | Code: 429
+2026-07-03 23:45:23,631 - WARNING - Chunk 1/001 - Proofread API error (status: 429): Gemini API Error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\nPlease retry in 35.072143321s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '35s'}]}}. Retrying (1/5)
+2026-07-03 23:45:24,970 - INFO - Chunk 1/001 - Step 2/2: Editing & proofreading (attempt 2)
+2026-07-03 23:45:24,970 - DEBUG - ==================== API CALL START ====================
+2026-07-03 23:45:24,970 - DEBUG - Model: gemini-2.5-flash | Temperature: 0.4 | Top_P: 0.9
+2026-07-03 23:45:24,970 - DEBUG - System Instruction:
+Bạn là biên tập viên văn học chuyên nghiệp tiếng Việt. Nhiệm vụ của bạn là hiệu đính, biên tập và nâng cao chất lượng bản dịch thô (raw translation) từ tiểu thuyết nước ngoài sang tiếng Việt.
+
+YÊU CẦU BIÊN TẬP:
+1. MƯỢT MÀ VÀ TỰ NHIÊN: Cải thiện câu từ để trôi chảy, tự nhiên theo văn phong tiếng Việt văn học, tránh bị sượng, cứng nhắc hoặc có cảm giác dịch từ từng chữ.
+2. BẢO TOÀN NỘI DUNG: Không tự ý thêm thắt tình tiết, không bỏ sót ý hay bóp méo ý nghĩa gốc của đoạn văn.
+3. NHẤT QUÁN THUẬT NGỮ: Đảm bảo sử dụng chính xác các từ khóa trong [Glossary] và [Characters] được cung cấp.
+4. CẤU TRÚC ĐẦU RA: Bạn BẮT BUỘC phải trả về kết quả đã được hiệu đính/biên tập bên trong thẻ XML <proofread>. Không viết thêm lời mở đầu, lời kết hay bất kỳ bình luận nào bên ngoài thẻ này.
+
+<proofread>
+[Bản dịch tiếng Việt đã được biên tập và đánh bóng hoàn chỉnh]
+</proofread>
+2026-07-03 23:45:24,970 - DEBUG - User Content:
+[VĂN BẢN GỐC]
+Chapter 1: The Cosmic Drift
+
+The starship Ariadne drifted silently through the torpor of deep space. Merian stared at the navigation console, his consciousness fading into a chemical dormancy.
+"We must activate the nutrient drip protocol," the automated AI voice chimed.
+
+[BẢN DỊCH THÔ]
+Chương 1: Sự Trôi Dạt Vũ Trụ
+
+Tàu vũ trụ Ariadne lẳng lặng trôi trong trạng thái ngủ đông của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển định vị, ý thức của anh dần chìm vào trạng thái ngủ đông hóa học.
+
+"Chúng ta phải kích hoạt giao thức truyền dịch dinh dưỡng," giọng nói của AI tự động vang lên.
+
+[GLOSSARY - DỊCH ĐÚNG THEO BẢNG NÀY]
+- starship → tàu vũ trụ
+- torpor → ngủ đông
+- deep space → không gian sâu thẳm
+- navigation console → bảng điều khiển định vị
+- chemical dormancy → ngủ đông hóa học
+- nutrient drip protocol → giao thức truyền dịch dinh dưỡng
+- automated AI voice → giọng nói của AI tự động
+- The Cosmic Drift → Sự Trôi Dạt Vũ Trụ
+[NHÂN VẬT & XƯNG HÔ - GIỮ NHẤT QUÁN]
+- Ariadne: Ariadne | Tàu vũ trụ |
+- Merian: Merian | Phi hành gia |
+- AI: AI | Trí tuệ nhân tạo của tàu |
+Hãy hiệu đính và đánh bóng bản dịch thô trên dựa trên văn bản gốc và danh sách thuật ngữ/nhân vật đã cung cấp. Giữ đúng số lượng đoạn văn và định dạng dòng.
+2026-07-03 23:45:34,899 - DEBUG - API Call finished in 9.93s
+2026-07-03 23:45:34,899 - DEBUG - Raw response output:
+<proofread>
+Chương 1: Sự Trôi Dạt Vũ Trụ
+
+Tàu vũ trụ Ariadne lẳng lặng trôi trong sự tĩnh lặng như ngủ đông của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển định vị, ý thức anh dần lịm đi vào trạng thái ngủ đông hóa học.
+
+"Chúng ta phải kích hoạt giao thức truyền dịch dinh dưỡng," giọng nói của AI tự động vang lên.
+</proofread>
+2026-07-03 23:45:34,899 - DEBUG - Finish Reason: FINISHREASON.STOP
+2026-07-03 23:45:34,899 - DEBUG - ==================== API CALL END ====================
+2026-07-03 23:45:34,899 - DEBUG - Chunk 1/001 - Proofread response: <proofread>
+Chương 1: Sự Trôi Dạt Vũ Trụ
+
+Tàu vũ trụ Ariadne lẳng lặng trôi trong sự tĩnh lặng như ngủ đông của không gian sâu thẳm. Merian nhìn chằm chằm vào bảng điều khiển định vị, ý thức anh dần l...
+2026-07-03 23:45:34,899 - INFO - Chunk 1/001 - Step 2/2: Proofreading success
+2026-07-03 23:45:34,900 - INFO - Chunk 1/001 - Lazy translation similarity: 0.0180
+2026-07-03 23:45:34,901 - INFO - Chunk 001/1 completed in 20.1s
+2026-07-03 23:45:34,901 - INFO - Assembling file: test_small_vi.txt
+2026-07-03 23:45:34,901 - INFO - Saved file: test_small_vi.txt

@@ -6,7 +6,7 @@ features:
   auto_summary: true
   clean_thinking_tags: true
   detect_duplicate_translation: true
-  editing_and_proofreading: true
+  editing_and_proofreading: false
   inject_glossary_in_system_prompt: true
   relevance_filtering: true
   rolling_history: true
@@ -23,8 +23,8 @@ retry:
   exponential_base: 2.0
   initial_delay: 2.0
   jitter: true
-  max_delay: 60.0
-  max_retries: 5
+  max_delay: 120.0
+  max_retries: 10
 translation:
   chunk_size: 4000
   duplicate_threshold: 0.85

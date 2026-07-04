@@ -314,17 +314,6 @@ class TranslationPipeline:
             return await coro_func(*args, **kwargs)
 
     async def _call_genai(self, system: str, user: str, temperature: float = None) -> str:
-        # If using a Gemma model, merge system prompt into user prompt to avoid 500 server crashes.
-        if system and 'gemma' in self.model.lower():
-            import copy
-            if isinstance(user, list):
-                user = copy.deepcopy(user)
-                if user and user[0].get("role") == "user":
-                    user[0]["parts"][0]["text"] = f"[HƯỚNG DẪN DỊCH THUẬT VÀ ĐỊNH DẠNG]\n{system}\n\n[NỘI DUNG VĂN BẢN]\n{user[0]['parts'][0]['text']}"
-            else:
-                user = f"[HƯỚNG DẪN DỊCH THUẬT VÀ ĐỊNH DẠNG]\n{system}\n\n[NỘI DUNG VĂN BẢN]\n{user}"
-            system = ""
-
         temp = temperature if temperature is not None else self.model_opts['temperature']
         top_p = self.model_opts['top_p']
         
@@ -363,6 +352,9 @@ class TranslationPipeline:
             ),
         ]
 
+        is_gemma = 'gemma' in self.model.lower()
+        actual_safety = None if is_gemma else safety_settings
+
         t_start = time.time()
         try:
             if use_async:
@@ -373,7 +365,7 @@ class TranslationPipeline:
                         system_instruction=system,
                         temperature=temp,
                         top_p=top_p,
-                        safety_settings=safety_settings,
+                        safety_settings=actual_safety,
                     )
                 )
             else:
@@ -387,7 +379,7 @@ class TranslationPipeline:
                         system_instruction=system,
                         temperature=temp,
                         top_p=top_p,
-                        safety_settings=safety_settings,
+                        safety_settings=actual_safety,
                     )
                 )
             latency = time.time() - t_start

@@ -109,8 +109,8 @@ def _split_into_paragraphs(text: str) -> List[str]:
                 current_lines = [line]
             # If NEXT line is a chapter title → flush current line as its own paragraph
             elif (current_lines and
-                  i + 1 < len(lines) and
-                  _is_chapter_title(lines[i + 1])):
+                i + 1 < len(lines) and
+                _is_chapter_title(lines[i + 1])):
                 current_lines.append(line)
                 paragraphs.append('\n'.join(current_lines))
                 current_lines = []
@@ -146,6 +146,7 @@ def chunk_text(
     chunks: List[str] = []
     current_paras: List[str] = []
     current_tokens: int = 0
+    min_size = chunk_size * 0.35
 
     for para in paragraphs:
         para_tokens = estimate_tokens(para, cpt)
@@ -153,7 +154,15 @@ def chunk_text(
         # Chapter title: always flush previous content first, then start new chunk WITH title
         if _is_chapter_title(para):
             if current_paras:
-                chunks.append('\n\n'.join(current_paras))
+                current_chunk_str = '\n\n'.join(current_paras)
+                if chunks and current_tokens < min_size:
+                    chunks[-1] = chunks[-1] + '\n\n' + current_chunk_str
+                elif not chunks:
+                    current_paras.append(para)
+                    current_tokens += para_tokens
+                    continue
+                else:
+                    chunks.append(current_chunk_str)
             current_paras  = [para]
             current_tokens = para_tokens
             continue
@@ -161,7 +170,11 @@ def chunk_text(
         # Oversized single paragraph → sentence-split
         if para_tokens > chunk_size:
             if current_paras:
-                chunks.append('\n\n'.join(current_paras))
+                current_chunk_str = '\n\n'.join(current_paras)
+                if chunks and current_tokens < min_size:
+                    chunks[-1] = chunks[-1] + '\n\n' + current_chunk_str
+                else:
+                    chunks.append(current_chunk_str)
                 current_paras  = []
                 current_tokens = 0
             chunks.extend(_split_large_paragraph(para, chunk_size, cpt))
@@ -169,7 +182,11 @@ def chunk_text(
 
         # Normal accumulation
         if current_tokens + para_tokens > chunk_size and current_paras:
-            chunks.append('\n\n'.join(current_paras))
+            current_chunk_str = '\n\n'.join(current_paras)
+            if chunks and current_tokens < min_size:
+                chunks[-1] = chunks[-1] + '\n\n' + current_chunk_str
+            else:
+                chunks.append(current_chunk_str)
             current_paras  = [para]
             current_tokens = para_tokens
         else:
@@ -177,7 +194,12 @@ def chunk_text(
             current_tokens += para_tokens
 
     if current_paras:
-        chunks.append('\n\n'.join(current_paras))
+        last_chunk = '\n\n'.join(current_paras)
+        last_tokens = estimate_tokens(last_chunk, cpt)
+        if chunks and last_tokens < min_size:
+            chunks[-1] = chunks[-1] + '\n\n' + last_chunk
+        else:
+            chunks.append(last_chunk)
 
     return chunks
 

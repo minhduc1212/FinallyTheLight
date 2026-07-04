@@ -3,7 +3,7 @@
     "project": "my_project",
     "genre": "Khoa học viễn tưởng",
     "created_at": "2026-04-20T08:53:10.106850",
-    "last_updated": "2026-07-04T01:28:55.924912"
+    "last_updated": "2026-07-04T10:52:40.081712"
   },
   "terms": {
     "法力": "pháp lực",
@@ -99,7 +99,13 @@
     "navigation console": "bảng điều khiển điều hướng",
     "chemical dormancy": "trạng thái ngủ đông hóa học",
     "nutrient drip protocol": "quy trình truyền chất dinh dưỡng",
-    "automated AI voice": "giọng nói AI tự động"
+    "automated AI voice": "giọng nói AI tự động",
+    "大炎皇朝": "Đại Viêm Hoàng triều",
+    "国祚": "quốc tộ",
+    "仙门": "tiên môn",
+    "权相": "quyền tướng",
+    "沧源": "Thương Nguyên",
+    "活佛": "Hoạt Phật"
   },
   "characters": {
     "Tôi (Người kể chuyện)": "Người kể chuyện, người đang hồi tưởng về lịch sử khám phá vũ trụ.",
@@ -115,6 +121,9 @@
     "Tubuspiscis quesadae": "Tên loài sinh vật | Sinh vật trên Aecor | N/A",
     "Doliopiscis aecorii": "Tên loài sinh vật | Sinh vật trên Aecor | N/A",
     "Pigertapete aecorii": "Tên loài sinh vật | Sinh vật trên Aecor | N/A",
-    "Merian": "Merian | Phi hành gia | anh"
+    "Merian": "Merian | Phi hành gia | anh",
+    "许元": "Hứa Nguyên | Nam chính | xưng tôi",
+    "黑衣女子": "Nữ tử áo đen | Nhân vật bí ẩn, mạnh mẽ | xưng tôi, gọi Hứa Nguyên là anh",
+    "三公子": "Tam công tử | Cách gọi Hứa Nguyên từ một nhân vật chưa lộ diện | gọi Hứa Nguyên là Tam công tử"
   }
 }

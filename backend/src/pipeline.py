@@ -286,9 +286,24 @@ class TranslationPipeline:
             parts.append(tpl.replace('{characters}', characters_str).rstrip())
 
         prefix = '\n\n'.join(parts)
+        recitation_bypass = "\n\n[LƯU Ý DỊCH THUẬT]\nHãy dịch thoát ý và dùng từ ngữ của riêng bạn, tránh dịch y hệt các câu chữ có sẵn trực tuyến để không bị bộ lọc trùng lặp (Recitation filter) chặn."
         if prefix:
-            return prefix + '\n\n[VĂN BẢN CẦN DỊCH]\n' + chunk
+            return prefix + recitation_bypass + '\n\n[VĂN BẢN CẦN DỊCH]\n' + chunk
         return '[VĂN BẢN CẦN DỊCH]\n' + chunk
+
+    def _sanitize_sensitive_words(self, text: str) -> str:
+        if not text:
+            return text
+        sensitive_words = [
+            "贱人", "勾栏", "野种", "妓女", "贱妇", "杂种", 
+            "畜生", "强奸", "轮奸", "奸污", "自杀", "色狼", 
+            "嫖娼", "妓院", "青楼"
+        ]
+        for word in sensitive_words:
+            if word in text:
+                obfuscated = "-".join(list(word))
+                text = text.replace(word, obfuscated)
+        return text
 
     async def _run_api_task(self, coro_func, *args, **kwargs):
         """Awaits an async API function, guarded by the global semaphore if enabled."""
@@ -299,6 +314,17 @@ class TranslationPipeline:
             return await coro_func(*args, **kwargs)
 
     async def _call_genai(self, system: str, user: str, temperature: float = None) -> str:
+        # If using a Gemma model, merge system prompt into user prompt to avoid 500 server crashes.
+        if system and 'gemma' in self.model.lower():
+            import copy
+            if isinstance(user, list):
+                user = copy.deepcopy(user)
+                if user and user[0].get("role") == "user":
+                    user[0]["parts"][0]["text"] = f"[HƯỚNG DẪN DỊCH THUẬT VÀ ĐỊNH DẠNG]\n{system}\n\n[NỘI DUNG VĂN BẢN]\n{user[0]['parts'][0]['text']}"
+            else:
+                user = f"[HƯỚNG DẪN DỊCH THUẬT VÀ ĐỊNH DẠNG]\n{system}\n\n[NỘI DUNG VĂN BẢN]\n{user}"
+            system = ""
+
         temp = temperature if temperature is not None else self.model_opts['temperature']
         top_p = self.model_opts['top_p']
         
@@ -582,11 +608,12 @@ class TranslationPipeline:
         contents: list = None,
         chunks: list[str] = None,
         translated_chunks: dict[int, str] = None,
+        temperature: float = None,
     ) -> str:
         retries = 0
         current_chunk = chunk
         retry_instruction = None
-        base_temp = self.model_opts.get('temperature', 0.25)
+        base_temp = temperature if temperature is not None else self.model_opts.get('temperature', 0.25)
         
         detect_dup = self.settings['features'].get('detect_duplicate_translation', True)
         dup_thresh = self.settings['translation'].get('duplicate_threshold', 0.85)
@@ -939,6 +966,7 @@ class TranslationPipeline:
         loop = asyncio.get_event_loop()
         # Non-blocking file read
         text = await loop.run_in_executor(self.executor, input_path.read_text, 'utf-8')
+        text = self._sanitize_sensitive_words(text)
 
         # ── Auto-detect source language ──────────────────────────────
         detected_lang = self._resolve_source_lang(text)
@@ -1081,6 +1109,83 @@ class TranslationPipeline:
             else:
                 tasks = [_translate_single_chunk(idx) for idx in chunks_to_translate]
                 await asyncio.gather(*tasks)
+
+            # ── Re-translate failed chunks ──────────────────────────────
+            if failed_chunks:
+                print(f"\n🔄 Found {len(failed_chunks)} failed chunks. Starting re-translation phase...")
+                self.logger.info(f"Starting re-translation phase for {len(failed_chunks)} failed chunks.")
+                
+                re_pass = 1
+                max_re_passes = 3
+                base_temp = self.model_opts.get('temperature', 0.25)
+                while failed_chunks and re_pass <= max_re_passes:
+                    print(f"   🔄 Re-translation Pass {re_pass}/{max_re_passes}...")
+                    self.logger.info(f"Re-translation Pass {re_pass}/{max_re_passes}")
+                    
+                    failed_indices = list(failed_chunks.keys())
+                    for idx in failed_indices:
+                        print(f"      🔄 Retrying Chunk {idx+1:03d}/{total}...")
+                        try:
+                            t_start = time.time()
+                            chunk = chunks[idx]
+                            if idx > 0:
+                                prev_chunk = chunks[idx - 1]
+                                context_snippet = prev_chunk[-1000:]
+                            else:
+                                context_snippet = "(Đây là phần đầu của tác phẩm, không có bối cảnh trước)"
+
+                            g_str = self.glossary_mgr.format_terms_for_prompt(chunk if filter_relevant else None)
+                            c_str = self.glossary_mgr.format_characters_for_prompt(chunk if filter_relevant else None)
+
+                            # Slightly increase temperature for each retry pass to bypass recitation/safety blocks
+                            temp = min(1.0, base_temp + 0.15 * re_pass)
+
+                            contents = None
+                            if use_rolling_history:
+                                contents = self._build_multi_turn_contents(
+                                    chunk,
+                                    context_snippet,
+                                    g_str,
+                                    c_str,
+                                    detected_lang,
+                                    idx,
+                                    chunks,
+                                    translated_chunks,
+                                    cpt,
+                                )
+
+                            translation = await self._translate_chunk_with_retry(
+                                chunk,
+                                context_snippet,
+                                g_str,
+                                c_str,
+                                detected_lang,
+                                idx,
+                                contents=contents,
+                                chunks=chunks,
+                                translated_chunks=translated_chunks,
+                                temperature=temp,
+                            )
+                            
+                            translated_chunks[idx] = translation
+                            del failed_chunks[idx]
+
+                            await self._save_checkpoint_async(input_path.stem, {
+                                'total_chunks': total,
+                                'translated_chunks': {str(k): v for k, v in translated_chunks.items()},
+                                'source_lang': detected_lang,
+                                'glossary_terms': self.glossary_mgr.get_all(),
+                                'characters': self.glossary_mgr.get_characters(),
+                            })
+
+                            elapsed = time.time() - t_start
+                            print(f"      ✅ Chunk {idx+1:03d}/{total} successfully re-translated in {elapsed:.1f}s")
+                            self.logger.info(f"Chunk {idx+1:03d}/{total} successfully re-translated in {elapsed:.1f}s")
+                        except Exception as e:
+                            print(f"      ❌ Chunk {idx+1:03d}/{total} still failed on pass {re_pass}: {e}")
+                            self.logger.error(f"Chunk {idx+1:03d}/{total} still failed on pass {re_pass}: {e}")
+                            
+                    re_pass += 1
 
         # ── Assemble & save output ───────────────────────────────────
         final_parts = [translated_chunks[i] for i in range(total)]

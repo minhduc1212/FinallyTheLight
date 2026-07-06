@@ -4,3 +4,7 @@ note.md
 .env
 DESIGN.md
 *.log
+backend/checkpoints
+backend/output
+backend/logs
+backend/data

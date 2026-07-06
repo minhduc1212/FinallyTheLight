@@ -5,11 +5,12 @@ features:
   auto_glossary: true
   auto_summary: true
   clean_thinking_tags: true
-  detect_duplicate_translation: true
+  detect_duplicate_translation: false
   editing_and_proofreading: false
   inject_glossary_in_system_prompt: true
   relevance_filtering: true
-  rolling_history: true
+  rolling_history: false
+  summary_history: true
   use_async_client: true
 model:
   name: gemma-4-31b-it
@@ -21,9 +22,9 @@ paths:
   output_dir: output
 retry:
   exponential_base: 2.0
-  initial_delay: 2.0
+  initial_delay: 10.0
   jitter: true
-  max_delay: 120.0
+  max_delay: 180.0
   max_retries: 10
 translation:
   chunk_size: 4000

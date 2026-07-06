@@ -25,10 +25,17 @@ Usage examples:
 import argparse
 import asyncio
 import sys
+sys.stdout.reconfigure(encoding='utf-8')
 from pathlib import Path
 
 from src.pipeline import TranslationPipeline
 from src.checkpoint_manager import CheckpointManager
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.progress import Progress, BarColumn, TextColumn, TaskProgressColumn
+
+console = Console()
 
 
 GENRES = [
@@ -110,18 +117,24 @@ def show_status(project: str):
     checkpoints = mgr.list_checkpoints()
 
     if not checkpoints:
-        print(f"✅ No active checkpoints for project '{project}'")
+        console.print(f"[green]✅ No active checkpoints for project '{project}'[/green]")
         return
 
-    print(f"\n📋 Checkpoint status for project: {project}")
-    print("-" * 50)
-    for stem in checkpoints:
-        progress = mgr.get_progress(stem)
-        if progress:
-            idx, total = progress
-            pct = (idx + 1) / total * 100 if total else 0
-            bar = '█' * int(pct / 5) + '░' * (20 - int(pct / 5))
-            print(f"  {stem:<30} [{bar}] {idx+1}/{total} ({pct:.0f}%)")
+    console.print(f"\n[bold cyan]📋 Checkpoint status for project: {project}[/bold cyan]")
+    
+    with Progress(
+        TextColumn("[bold blue]{task.description}"),
+        BarColumn(bar_width=None),
+        TaskProgressColumn(),
+        TextColumn("[green]{task.completed}/{task.total}"),
+        console=console,
+        expand=True
+    ) as progress:
+        for stem in checkpoints:
+            prog = mgr.get_progress(stem)
+            if prog:
+                count, total = prog
+                progress.add_task(stem, total=total, completed=count)
 
 
 def patch_settings_from_args(args):
@@ -161,18 +174,29 @@ async def main():
     # Apply feature flags
     patch_settings_from_args(args)
 
-    print(f"\n{'='*55}")
-    print(f"  📚 Novel Translator")
-    print(f"  Project : {args.project}")
-    print(f"  Genre   : {args.genre}")
-    print(f"  Lang    : {args.lang}")
-    print(f"  Model   : {args.model or '(from config)'}")
-    print(f"  Input   : {args.input}")
+    table = Table(show_header=False, box=None)
+    table.add_column("Key", style="cyan", justify="right")
+    table.add_column("Value", style="bold white")
+    
+    table.add_row("Project", args.project)
+    table.add_row("Genre", args.genre)
+    table.add_row("Lang", args.lang)
+    table.add_row("Model", args.model or "(from config)")
+    table.add_row("Input", args.input)
     src_display = args.source_lang or 'auto'
-    print(f"  Source  : {src_display}")
+    table.add_row("Source", src_display)
     if args.resume:
-        print(f"  Mode    : RESUME")
-    print(f"{'='*55}")
+        table.add_row("Mode", "[yellow]RESUME[/yellow]")
+
+    panel = Panel(
+        table,
+        title="[bold blue]📚 Novel Translator[/bold blue]",
+        expand=False,
+        border_style="cyan"
+    )
+    console.print()
+    console.print(panel)
+    console.print()
 
     pipeline = TranslationPipeline(
         project=args.project,

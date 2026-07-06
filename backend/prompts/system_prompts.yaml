@@ -130,7 +130,7 @@ user_template: |
   {chunk}
 
 context_section: |
-  [BỐI CẢNH ĐOẠN TRƯỚC (VĂN BẢN GỐC) - để hiểu ngữ cảnh]
+  [BỐI CẢNH VÀ VĂN PHONG ĐOẠN TRƯỚC - để hiểu ngữ cảnh và giữ mạch văn]
   ... {summary} ...
 
 

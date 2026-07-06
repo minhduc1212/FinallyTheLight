@@ -13,11 +13,14 @@ Flow per file:
 """
 
 import asyncio
+from rich.console import Console
+from rich.progress import Progress, BarColumn, TextColumn, TaskProgressColumn, TimeElapsedColumn, TimeRemainingColumn, SpinnerColumn
 import json
 import logging
 import os
 import re
 import time
+import contextvars
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
@@ -36,6 +39,8 @@ from .lang_detector import detect_source_language, get_source_lang_label
 import dotenv
 
 dotenv.load_dotenv()
+
+current_file_stem = contextvars.ContextVar('current_file_stem', default='default')
 
 # Custom Exception Classes
 class TranslationError(Exception):
@@ -74,11 +79,16 @@ def calculate_tfidf_cosine_similarity(text1: str, text2: str) -> float:
     words1 = re.findall(r'\w+', text1.lower())
     words2 = re.findall(r'\w+', text2.lower())
     
-    if not words1 or not words2:
+    # Use Trigrams (3-grams) to capture phrase structure, 
+    # crucial for preventing false-positives in monosyllabic languages like Vietnamese/Chinese
+    b1 = list(zip(words1, words1[1:], words1[2:]))
+    b2 = list(zip(words2, words2[1:], words2[2:]))
+    
+    if not b1 or not b2:
         return 0.0
         
-    c1 = collections.Counter(words1)
-    c2 = collections.Counter(words2)
+    c1 = collections.Counter(b1)
+    c2 = collections.Counter(b2)
     
     all_words = set(c1.keys()).union(set(c2.keys()))
     
@@ -129,19 +139,32 @@ class TranslationPipeline:
         self.max_workers = max_workers or self.settings['translation']['max_workers']
         self.project     = project
 
-        # Setup logging
-        self.log_dir = Path("logs")
-        self.log_dir.mkdir(parents=True, exist_ok=True)
-        log_file = self.log_dir / f"{project}.log"
+        self.console = Console()
+        # Override print to handle Windows console encoding issues safely
+        import sys
+        original_rich_print = self.console.print
+        def safe_rich_print(*args, **kwargs):
+            try:
+                original_rich_print(*args, **kwargs)
+            except Exception:
+                try:
+                    with self.console.capture() as capture:
+                        original_rich_print(*args, **kwargs)
+                    text = capture.get()
+                    encoding = sys.stdout.encoding or 'utf-8'
+                    sys.stdout.write(text.encode(encoding, errors='replace').decode(encoding))
+                    sys.stdout.flush()
+                except Exception:
+                    try:
+                        message = " ".join(str(arg) for arg in args)
+                        print(message)
+                    except Exception:
+                        pass
+        self.console.print = safe_rich_print
+        self.loggers = {}
         
-        self.logger = logging.getLogger(project)
-        self.logger.setLevel(logging.DEBUG)
-        if not self.logger.handlers:
-            fh = logging.FileHandler(log_file, encoding='utf-8')
-            fh.setLevel(logging.DEBUG)
-            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-            fh.setFormatter(formatter)
-            self.logger.addHandler(fh)
+        # Initialize default logger
+        self._get_logger('default')
 
         self.logger.info("--- Pipeline Initialized ---")
         self.logger.info(f"Project: {project} | Genre: {self.genre} | Target Lang: {self.target_lang} | Model: {self.model}")
@@ -197,6 +220,29 @@ class TranslationPipeline:
                 "   Linux/macOS: export GEMINI_API_KEY='your_api_key'"
             )
         self.client = genai.Client()
+
+    @property
+    def logger(self):
+        stem = current_file_stem.get()
+        return self._get_logger(stem)
+
+    def _get_logger(self, file_stem: str):
+        if file_stem not in self.loggers:
+            # We want logs to be in logs/{project}/{file_stem}.log
+            log_dir = Path("logs") / self.project
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_file = log_dir / f"{file_stem}.log"
+            
+            logger = logging.getLogger(f"{self.project}_{file_stem}")
+            logger.setLevel(logging.DEBUG)
+            if not logger.handlers:
+                fh = logging.FileHandler(log_file, encoding='utf-8')
+                fh.setLevel(logging.DEBUG)
+                formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+                fh.setFormatter(formatter)
+                logger.addHandler(fh)
+            self.loggers[file_stem] = logger
+        return self.loggers[file_stem]
 
     # ------------------------------------------------------------------
     # Config helpers
@@ -256,6 +302,9 @@ class TranslationPipeline:
 
         system_prompt = f"{base}\n\n{source_rules}\n\n{genre_hint}\n{lang_instruction}"
         
+        if self.settings['features'].get('summary_history', False):
+            system_prompt += "\n\n- Tóm tắt ngắn gọn nội dung chính của phân đoạn này bằng tiếng Việt trong thẻ <summary>...</summary>."
+        
         if glossary_str:
             system_prompt += f"\n\n[GLOSSARY - DỊCH ĐÚNG THEO BẢNG NÀY]\n{glossary_str}"
         if characters_str:
@@ -305,6 +354,21 @@ class TranslationPipeline:
                 text = text.replace(word, obfuscated)
         return text
 
+    async def _write_incremental_output(self, input_path: Path, translated_chunks: dict[int, str], failed_chunks: dict[int, str], total: int) -> None:
+        final_parts = []
+        for i in range(total):
+            if i in translated_chunks:
+                final_parts.append(translated_chunks[i])
+            elif i in failed_chunks:
+                final_parts.append(f"\n[LỖI DỊCH CHUNK {i+1}: {failed_chunks[i]}]\n")
+            else:
+                final_parts.append(f"\n[... Đang chờ dịch phân đoạn {i+1}/{total} ...]\n")
+        
+        final_text = '\n\n'.join(final_parts)
+        lang_suffix = f"_{self.target_lang}"
+        output_path = self.output_dir / f"{input_path.stem}{lang_suffix}{input_path.suffix}"
+        await self._write_text_file(output_path, final_text)
+
     async def _run_api_task(self, coro_func, *args, **kwargs):
         """Awaits an async API function, guarded by the global semaphore if enabled."""
         if self.use_global_semaphore:
@@ -352,8 +416,7 @@ class TranslationPipeline:
             ),
         ]
 
-        is_gemma = 'gemma' in self.model.lower()
-        actual_safety = None if is_gemma else safety_settings
+        actual_safety = safety_settings
 
         t_start = time.time()
         try:
@@ -567,7 +630,7 @@ class TranslationPipeline:
             contents_1[-1]["parts"][0]["text"] = user_msg_1
 
         # Translate part 1
-        t1 = await self._translate_chunk_with_retry(
+        t1, s1 = await self._translate_chunk_with_retry(
             parts[0], context_snippet, glossary_str, characters_str, source_lang, chunk_idx, max_depth=max_depth, contents=contents_1, chunks=chunks, translated_chunks=translated_chunks
         )
         
@@ -582,11 +645,12 @@ class TranslationPipeline:
             contents_2[-1]["parts"][0]["text"] = user_msg_2
         
         # Translate part 2
-        t2 = await self._translate_chunk_with_retry(
+        t2, s2 = await self._translate_chunk_with_retry(
             parts[1], context_snippet_2, glossary_str, characters_str, source_lang, chunk_idx, max_depth=max_depth, contents=contents_2, chunks=chunks, translated_chunks=translated_chunks
         )
         
-        return t1 + '\n\n' + t2
+        combined_s = s1 + ("\n" + s2 if s2 else "") if s1 else s2
+        return t1 + '\n\n' + t2, combined_s
 
     async def _translate_chunk_with_retry(
         self,
@@ -601,7 +665,7 @@ class TranslationPipeline:
         chunks: list[str] = None,
         translated_chunks: dict[int, str] = None,
         temperature: float = None,
-    ) -> str:
+    ) -> tuple[str, str]:
         retries = 0
         current_chunk = chunk
         retry_instruction = None
@@ -621,7 +685,7 @@ class TranslationPipeline:
                 if retries > 0:
                     temp = min(1.0, base_temp + 0.15 * retries)
 
-                print(f"      ⏳ Chunk {chunk_idx+1:03d}/{total_chunks_str} - Step 1/2: Translating & extracting glossary (attempt {retries+1}) ...")
+                self.console.print(f"      [cyan]⏳ Chunk {chunk_idx+1:03d}/{total_chunks_str} - Translating (Try {retries+1})[/cyan]")
                 self.logger.info(f"Chunk {chunk_idx+1}/{total_chunks_str} - Step 1/2: Translating & extracting glossary (attempt {retries+1})")
                 self.logger.debug(f"Chunk {chunk_idx+1}/{total_chunks_str} - Context: {context_snippet[-100:] if len(context_snippet) > 100 else context_snippet}")
 
@@ -639,10 +703,17 @@ class TranslationPipeline:
                 
                 self.logger.debug(f"Chunk {chunk_idx+1}/{total_chunks_str} - Raw response: {raw_response[:200]}...")
 
+                # Check for empty response (likely Safety Block or Context Limit)
+                if not raw_response.strip():
+                    raise TruncatedResponseError("API returned an EMPTY string! For Gemma models, this often means the Context Length Limit was exceeded. Splitting chunk...")
+
                 # Format check
-                has_start = re.search(r'<translation>', raw_response, re.IGNORECASE)
-                has_end = re.search(r'</translation>', raw_response, re.IGNORECASE)
-                if not (has_start and has_end):
+                has_start = bool(re.search(r'<translation>', raw_response, re.IGNORECASE))
+                has_end = bool(re.search(r'</translation>', raw_response, re.IGNORECASE))
+                
+                if has_start and not has_end:
+                    raise TruncatedResponseError("Response was likely truncated before closing tag.")
+                if not has_start:
                     raise InvalidFormatError("Response format is invalid (missing <translation> tags).")
 
                 # Format check for glossary if auto_glossary is enabled
@@ -654,6 +725,7 @@ class TranslationPipeline:
                         raise InvalidFormatError("Response format is invalid (missing <glossary> tags).")
 
                 parsed_translation = self._parse_xml_output_only(raw_response)
+                parsed_summary = self._parse_summary_output(raw_response) if self.settings['features'].get('summary_history', False) else ""
 
                 # Extract glossary and update
                 if auto_glossary_enabled:
@@ -663,7 +735,8 @@ class TranslationPipeline:
                         chars_added = await self._update_glossary_characters_async(glossary_data.get('characters', {}))
                         self.logger.info(f"Chunk {chunk_idx+1}/{total_chunks_str} - Extracted: {terms_added} terms, {chars_added} characters")
                         if terms_added > 0 or chars_added > 0:
-                            print(f"      📝 Chunk {chunk_idx+1:03d}/{total_chunks_str} - Extracted: {chars_added} characters, {terms_added} terms updated")
+                            if terms_added > 0:
+                                self.console.print(f"      [dim]📝 Chunk {chunk_idx+1:03d}/{total_chunks_str} - Extracted {terms_added} terms[/dim]")
                             # Refresh glossary and characters strings for proofreading or similarity checks
                             filter_relevant = self.settings['features'].get('relevance_filtering', True)
                             glossary_str = self.glossary_mgr.format_terms_for_prompt(current_chunk if filter_relevant else None)
@@ -672,7 +745,7 @@ class TranslationPipeline:
                 # Editing and Proofreading
                 editing_enabled = self.settings['features'].get('editing_and_proofreading', True)
                 if editing_enabled and parsed_translation:
-                    print(f"      ⏳ Chunk {chunk_idx+1:03d}/{total_chunks_str} - Step 2/2: Editing & proofreading ...")
+                    # print(f"      ⏳ Chunk {chunk_idx+1:03d}/{total_chunks_str} - Step 2/2: Editing & proofreading ...")
                     self.logger.info(f"Chunk {chunk_idx+1}/{total_chunks_str} - Step 2/2: Starting editing and proofreading")
                     parsed_translation = await self._proofread_chunk_with_retry(
                         current_chunk,
@@ -686,7 +759,7 @@ class TranslationPipeline:
 
                 # Similarity checks
                 if detect_dup and parsed_translation:
-                    print(f"      ⏳ Chunk {chunk_idx+1:03d}/{total_chunks_str} - Verifying similarity & duplicate checks ...")
+                    # print(f"      ⏳ Chunk {chunk_idx+1:03d}/{total_chunks_str} - Verifying similarity & duplicate checks ...")
                     # 1. Lazy translation check (similarity between original chunk and translation)
                     if source_lang.lower() != self.target_lang.lower():
                         lazy_sim = calculate_tfidf_cosine_similarity(current_chunk, parsed_translation)
@@ -709,11 +782,11 @@ class TranslationPipeline:
                                         f"similarity {dup_sim:.2f} exceeds threshold {dup_thresh:.2f}"
                                     )
 
-                return parsed_translation
+                return parsed_translation, parsed_summary
                 
             except TruncatedResponseError as e:
                 # Length truncation! Split and translate
-                print(f"      ⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} truncated. Splitting into 2 smaller chunks...")
+                # print(f"      ⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} truncated. Splitting into 2 smaller chunks...")
                 self.logger.warning(f"Chunk {chunk_idx+1}/{total_chunks_str} truncated. Splitting.")
                 if max_depth > 0:
                     return await self._split_and_translate_chunk(
@@ -728,7 +801,7 @@ class TranslationPipeline:
                 if retries > self.max_retries:
                     self.logger.error(f"Chunk {chunk_idx+1}/{total_chunks_str} - Format error: {e}. Max retries exceeded.")
                     raise
-                print(f"      ⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - Step 1/2: Format error: {e}. Retrying ({retries}/{self.max_retries})...")
+                self.console.print(f"      [bold yellow]⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - Format Error. Retrying ({retries}/{self.max_retries})[/bold yellow]")
                 self.logger.warning(f"Chunk {chunk_idx+1}/{total_chunks_str} - Format error: {e}. Retrying ({retries}/{self.max_retries})")
                 retry_instruction = "LƯU Ý: Phản hồi của bạn thiếu thẻ <translation>...</translation> hoặc <glossary>...</glossary>. Vui lòng trả về bản dịch được bọc chính xác trong thẻ này."
                 await self._sleep_with_backoff(retries)
@@ -738,7 +811,7 @@ class TranslationPipeline:
                 if retries > self.max_retries:
                     self.logger.error(f"Chunk {chunk_idx+1}/{total_chunks_str} - Lazy translation: {e}. Max retries exceeded.")
                     raise
-                print(f"      ⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - Lazy translation check failed: {e}. Retrying ({retries}/{self.max_retries}) with temperature higher...")
+                self.console.print(f"      [bold yellow]⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - Lazy translation. Retrying ({retries}/{self.max_retries})[/bold yellow]")
                 self.logger.warning(f"Chunk {chunk_idx+1}/{total_chunks_str} - Lazy translation: {e}. Retrying ({retries}/{self.max_retries})")
                 target_lang_label = get_source_lang_label(self.target_lang)
                 retry_instruction = f"LƯU Ý: Bản dịch vừa rồi quá giống văn bản gốc (chưa được dịch). Hãy dịch hoàn chỉnh sang {target_lang_label}, không sao chép lại văn bản gốc."
@@ -749,7 +822,7 @@ class TranslationPipeline:
                 if retries > self.max_retries:
                     self.logger.error(f"Chunk {chunk_idx+1}/{total_chunks_str} - Duplicate translation: {e}. Max retries exceeded.")
                     raise
-                print(f"      ⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - Duplicate translation check failed: {e}. Retrying ({retries}/{self.max_retries}) with temperature higher...")
+                self.console.print(f"      [bold yellow]⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - Duplicate translation. Retrying ({retries}/{self.max_retries})[/bold yellow]")
                 self.logger.warning(f"Chunk {chunk_idx+1}/{total_chunks_str} - Duplicate translation: {e}. Retrying ({retries}/{self.max_retries})")
                 retry_instruction = "LƯU Ý: Bản dịch vừa rồi bị lặp lại hoặc quá giống phân đoạn trước. Vui lòng dịch đúng nội dung mới của phân đoạn này, không lặp lại câu chữ cũ."
                 await self._sleep_with_backoff(retries)
@@ -765,7 +838,7 @@ class TranslationPipeline:
                     self.logger.error(f"Chunk {chunk_idx+1}/{total_chunks_str} - Gemini API error: {e}. Max retries exceeded.")
                     raise
                 
-                print(f"      ⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - API error (status: {e.status_code}): {e}. Retrying ({retries}/{self.max_retries})...")
+                self.console.print(f"      [bold red]⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - API Error ({e.status_code}). Retrying ({retries}/{self.max_retries})[/bold red]")
                 self.logger.warning(f"Chunk {chunk_idx+1}/{total_chunks_str} - API error (status: {e.status_code}): {e}. Retrying ({retries}/{self.max_retries})")
                 await self._sleep_with_backoff(retries)
 
@@ -784,7 +857,7 @@ class TranslationPipeline:
             if match:
                 return json.loads(match.group())
         except Exception as e:
-            print(f"      ⚠️  Pre-extraction failed: {e}")
+            self.console.print(f"      [bold red]⚠️  Pre-extraction failed:[/bold red] {e}")
         return {}
 
     def _parse_xml_output_only(self, response_text: str) -> str:
@@ -794,6 +867,11 @@ class TranslationPipeline:
             return translation_match.group(1).strip()
         # Fallback: remove XML tags if any, otherwise return raw
         return re.sub(r'<.*?>', '', response_text, flags=re.DOTALL).strip()
+
+    def _parse_summary_output(self, raw_response: str) -> str:
+        """Parse <summary> block."""
+        match = re.search(r'<summary>(.*?)</summary>', raw_response, re.DOTALL | re.IGNORECASE)
+        return match.group(1).strip() if match else ""
 
     def _parse_glossary_output(self, response_text: str) -> dict:
         """Parses the <glossary> tag from the response and returns dict."""
@@ -864,7 +942,7 @@ class TranslationPipeline:
                 if retries > 0:
                     temp = min(1.0, base_temp + 0.15 * retries)
                     
-                print(f"      ⏳ Chunk {chunk_idx+1:03d}/{total_chunks_str} - Step 2/2: Editing & proofreading (attempt {retries+1}) ...")
+                self.console.print(f"      [cyan]⏳ Chunk {chunk_idx+1:03d}/{total_chunks_str} - Proofreading (Try {retries+1})[/cyan]")
                 self.logger.info(f"Chunk {chunk_idx+1}/{total_chunks_str} - Step 2/2: Editing & proofreading (attempt {retries+1})")
 
                 raw_response = await self._run_api_task(
@@ -894,7 +972,7 @@ class TranslationPipeline:
                 if retries > self.max_retries:
                     self.logger.error(f"Chunk {chunk_idx+1}/{total_chunks_str} - Proofread format error: {e}. Max retries exceeded.")
                     raise
-                print(f"      ⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - Step 2/2: Proofread format error: {e}. Retrying ({retries}/{self.max_retries})...")
+                self.console.print(f"      [bold yellow]⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - Format Error. Retrying ({retries}/{self.max_retries})[/bold yellow]")
                 self.logger.warning(f"Chunk {chunk_idx+1}/{total_chunks_str} - Proofread format error: {e}. Retrying ({retries}/{self.max_retries})")
                 await self._sleep_with_backoff(retries)
                 
@@ -907,7 +985,7 @@ class TranslationPipeline:
                 if retries > self.max_retries:
                     self.logger.error(f"Chunk {chunk_idx+1}/{total_chunks_str} - API error during proofreading: {e}. Max retries exceeded.")
                     raise
-                print(f"      ⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - Step 2/2: Proofread API error (status: {e.status_code}): {e}. Retrying ({retries}/{self.max_retries})...")
+                self.console.print(f"      [bold red]⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} - API Error ({e.status_code}). Retrying ({retries}/{self.max_retries})[/bold red]")
                 self.logger.warning(f"Chunk {chunk_idx+1}/{total_chunks_str} - Proofread API error (status: {e.status_code}): {e}. Retrying ({retries}/{self.max_retries})")
                 await self._sleep_with_backoff(retries)
 
@@ -952,9 +1030,15 @@ class TranslationPipeline:
         )
 
     # ------------------------------------------------------------------
-    # Core: translate one file
-    # ------------------------------------------------------------------
-    async def translate_file(self, input_path: Path, resume: bool = False) -> Path:
+    async def translate_file(self, input_path: Path, resume: bool = False, target_chunks: Optional[list[int]] = None) -> Path:
+        # Set the context variable so logger logs to the correct file
+        token = current_file_stem.set(input_path.stem)
+        try:
+            return await self._translate_file_internal(input_path, resume, target_chunks)
+        finally:
+            current_file_stem.reset(token)
+            
+    async def _translate_file_internal(self, input_path: Path, resume: bool = False, target_chunks: Optional[list[int]] = None) -> Path:
         loop = asyncio.get_event_loop()
         # Non-blocking file read
         text = await loop.run_in_executor(self.executor, input_path.read_text, 'utf-8')
@@ -965,62 +1049,87 @@ class TranslationPipeline:
         lang_label    = get_source_lang_label(detected_lang)
         auto_marker   = '' if self._source_lang_override else ' (auto)'
 
-        print(f"\n📖 [{self.genre.upper()}] {input_path.name}")
-        print(f"   🌐 Nguồn: {lang_label}{auto_marker} → {self.target_lang.upper()}")
+        self.console.print(f"\n📖 [bold cyan] [{self.genre.upper()}] {input_path.name}")
+        self.console.print(f"   🌐 Nguồn: {lang_label}{auto_marker} → {self.target_lang.upper()}")
 
         chunks = chunk_text(text, self.chunk_size, source_lang=detected_lang)
         stats  = get_chunk_stats(chunks, source_lang=detected_lang)
         total  = stats['total_chunks']
 
+        # ── Save chunks for debugging ────────────────────────────────
+        debug_chunks_dir = self.output_dir / "debug_chunks" / input_path.stem
+        debug_chunks_dir.mkdir(parents=True, exist_ok=True)
+        for idx, chunk_content in enumerate(chunks):
+            chunk_file = debug_chunks_dir / f"chunk_{idx+1:03d}.txt"
+            chunk_file.write_text(chunk_content, encoding='utf-8')
+
         self.logger.info(f"Starting translation of file: {input_path.name}")
         self.logger.info(f"Source Language: {lang_label}{auto_marker} | Target Language: {self.target_lang.upper()}")
         self.logger.info(f"Total Chunks: {total} | Chunks Stats: {stats}")
 
-        print(f"   📦 {total} chunks | avg {stats['avg_tokens']} tokens | "
+        self.console.print(f"   📦 [bold]{total}[/bold] chunks | avg {stats['avg_tokens']} tokens | "
               f"max {stats['max_tokens']} tokens")
+        self.console.print(f"   💾 Saved {total} raw chunks to: {debug_chunks_dir}/")
 
-        # ── Resume from checkpoint ───────────────────────────────────
-        translated_chunks: dict[int, str] = {}
-
-        if resume:
-            # Non-blocking checkpoint load
-            cp = await loop.run_in_executor(self.executor, self.checkpoint_mgr.load, input_path.stem)
-            if cp:
-                if 'translated_chunks' in cp:
-                    translated_chunks = {int(k): v for k, v in cp['translated_chunks'].items()}
-                    detected_lang = cp.get('source_lang', detected_lang)
-                    if cp.get('glossary_terms'):
-                        await self._update_glossary_terms_async(cp['glossary_terms'])
-                    if cp.get('characters'):
-                        await self._update_glossary_characters_async(cp['characters'])
-                    print(f"   ▶️  Resuming progress: {len(translated_chunks)}/{total} chunks completed")
-                elif 'translated_parts' in cp:
-                    for idx, part in enumerate(cp['translated_parts']):
-                        translated_chunks[idx] = part
-                    detected_lang = cp.get('source_lang', detected_lang)
-                    if cp.get('glossary_terms'):
-                        await self._update_glossary_terms_async(cp['glossary_terms'])
-                    if cp.get('characters'):
-                        await self._update_glossary_characters_async(cp['characters'])
-                    print(f"   ▶️  Resuming progress (list format): {len(translated_chunks)}/{total} chunks")
-
-        # ── Pre-extract glossary & characters (Bypassed in v3/v2 dynamic flow) ────────────────────────
-        pass
+        # ── Load Checkpoint ──────────────────────────────────────────────
+        checkpoint = self.checkpoint_mgr.load(input_path.stem) if resume else None
+        translated_chunks = {}
+        summarized_chunks = {}
+        failed_chunks = {}
+        detected_lang = self._resolve_source_lang(chunks[0] if chunks else "")
+        
+        if checkpoint:
+            self.console.print(f"\n[bold green]📂 Checkpoint found for '{input_path.stem}'. Resuming...")
+            self.logger.info(f"Loaded checkpoint for {input_path.stem}")
+            if 'translated_chunks' in checkpoint:
+                for k, v in checkpoint['translated_chunks'].items():
+                    if isinstance(v, str) and "[LỖI DỊCH CHUNK" in v:
+                        failed_chunks[int(k)] = v
+                    else:
+                        translated_chunks[int(k)] = v
+            if 'summarized_chunks' in checkpoint:
+                for k, v in checkpoint['summarized_chunks'].items():
+                    summarized_chunks[int(k)] = v
+            if 'failed_chunks' in checkpoint:
+                for k, v in checkpoint['failed_chunks'].items():
+                    failed_chunks[int(k)] = v
+            if checkpoint.get('glossary_terms'):
+                await self._update_glossary_terms_async(checkpoint['glossary_terms'])
+            if checkpoint.get('characters'):
+                await self._update_glossary_characters_async(checkpoint['characters'])
+            self.console.print(f"   ▶️  [yellow]Resuming progress: {len(translated_chunks)}/{total} chunks completed, {len(failed_chunks)} failed chunks")
 
         # ── Translate chunks in parallel ─────────────────────────────
-        chunks_to_translate = [i for i in range(total) if i not in translated_chunks]
-        failed_chunks = {}
+        if target_chunks is not None:
+            chunks_to_translate = [i for i in target_chunks if (not resume) or (i not in translated_chunks)]
+        else:
+            chunks_to_translate = [i for i in range(total) if i not in translated_chunks]
+        
+        if not chunks_to_translate and not failed_chunks:
+            self.console.print(f"   [bold green]✅ All {total} chunks are already successfully translated. Skipping translation.[/bold green]")
+            lang_suffix = f"_{self.target_lang}"
+            output_path = self.output_dir / f"{input_path.stem}{lang_suffix}{input_path.suffix}"
+            if not output_path.exists():
+                final_parts = [translated_chunks[i] for i in range(total)]
+                final_text  = '\n\n'.join(final_parts)
+                await self._write_text_file(output_path, final_text)
+            self.console.print(f"   [bold green]✨ Done → {output_path.name}")
+            return output_path
 
         if chunks_to_translate:
             use_rolling_history = self.settings['features'].get('rolling_history', True)
             cpt = stats.get('chars_per_token', 3.5)
-            
+            if 'gemma' in self.model.lower():
+                cpt = 1.0  # Gemma tokenizes CJK characters very inefficiently (approx 1 token per char)
+            use_summary_history = self.settings['features'].get('summary_history', False)
             if use_rolling_history:
                 limit_desc = "sequential with rolling history"
+            elif use_summary_history:
+                limit_desc = "sequential with summary history"
             else:
                 limit_desc = f"global max: {self.max_concurrent_requests}" if self.use_global_semaphore else f"workers: {self.max_workers}"
                 
-            print(f"   ⚡ Translating {len(chunks_to_translate)} chunks ({limit_desc}) ...")
+            self.console.print(f"   [bold magenta]⚡ Translating {len(chunks_to_translate)} chunks ({limit_desc}) ...")
             
             local_semaphore = asyncio.Semaphore(self.max_workers) if (not self.use_global_semaphore and not use_rolling_history) else None
             filter_relevant = self.settings['features'].get('relevance_filtering', True)
@@ -1030,8 +1139,20 @@ class TranslationPipeline:
                     t_start = time.time()
                     chunk = chunks[idx]
 
-                    # Context: last 1000 characters of previous original text
-                    if idx > 0:
+                    # Context: last 1000 characters of previous original text, OR running summary
+                    use_summary_history = self.settings['features'].get('summary_history', False)
+                    if use_summary_history and idx > 0:
+                        max_h = self.settings['translation'].get('history_chapters', 2)
+                        h_sums = [summarized_chunks[p] for p in range(max(0, idx - max_h), idx) if p in summarized_chunks]
+                        summary_text = "\n".join(h_sums) if h_sums else "(Chưa có tóm tắt)"
+                        
+                        last_trans = translated_chunks.get(idx - 1, "")
+                        style_snippet = last_trans[-500:] if last_trans else ""
+                        
+                        context_snippet = f"TÓM TẮT CỐT TRUYỆN:\n{summary_text}"
+                        if style_snippet:
+                            context_snippet += f"\n\nĐOẠN DỊCH TRƯỚC ĐÓ (để tham khảo giọng văn):\n...{style_snippet}"
+                    elif idx > 0:
                         prev_chunk = chunks[idx - 1]
                         context_snippet = prev_chunk[-1000:]
                     else:
@@ -1057,7 +1178,7 @@ class TranslationPipeline:
                         )
 
                     try:
-                        translation = await self._translate_chunk_with_retry(
+                        translation, summary = await self._translate_chunk_with_retry(
                             chunk,
                             context_snippet,
                             g_str,
@@ -1069,24 +1190,33 @@ class TranslationPipeline:
                             translated_chunks=translated_chunks,
                         )
                         translated_chunks[idx] = translation
+                        if self.settings['features'].get('summary_history', False):
+                            summarized_chunks[idx] = summary
 
                         # Thread-safe save checkpoint (async)
                         await self._save_checkpoint_async(input_path.stem, {
                             'total_chunks': total,
                             'translated_chunks': {str(k): v for k, v in translated_chunks.items()},
+                            'summarized_chunks': {str(k): v for k, v in summarized_chunks.items()},
+                            'failed_chunks': {str(k): v for k, v in failed_chunks.items()},
                             'source_lang': detected_lang,
                             'glossary_terms': self.glossary_mgr.get_all(),
                             'characters': self.glossary_mgr.get_characters(),
                         })
 
+                        # Update incremental output file
+                        await self._write_incremental_output(input_path, translated_chunks, failed_chunks, total)
+
                         elapsed = time.time() - t_start
-                        print(f"      ✅ Chunk {idx+1:03d}/{total} completed in {elapsed:.1f}s")
+                        self.console.print(f"      [green]✅ Chunk {idx+1:03d}/{total} completed in {elapsed:.1f}s[/green]")
                         self.logger.info(f"Chunk {idx+1:03d}/{total} completed in {elapsed:.1f}s")
                     except Exception as e:
                         print(f"      ❌ Chunk {idx+1:03d}/{total} failed after all retries: {e}")
                         self.logger.error(f"Chunk {idx+1:03d}/{total} failed: {e}")
                         failed_chunks[idx] = str(e)
-                        translated_chunks[idx] = f"[LỖI DỊCH CHUNK {idx+1}: {e}]"
+                        # Remove from translated_chunks if it was there
+                        translated_chunks.pop(idx, None)
+                        await self._write_incremental_output(input_path, translated_chunks, failed_chunks, total)
 
                 if local_semaphore:
                     async with local_semaphore:
@@ -1095,28 +1225,46 @@ class TranslationPipeline:
                     await _do_translation()
 
             # Execute tasks
-            if use_rolling_history:
-                for idx in chunks_to_translate:
+            progress = Progress(
+                SpinnerColumn(),
+                TextColumn("[bold blue]{task.description}"),
+                BarColumn(bar_width=None),
+                TaskProgressColumn(),
+                TextColumn("[cyan]{task.completed}/{task.total}"),
+                TimeElapsedColumn(),
+                TimeRemainingColumn(),
+                console=self.console,
+                expand=True
+            )
+            with progress:
+                task_id = progress.add_task("Translating", total=len(chunks_to_translate))
+                
+                async def _translate_with_progress(idx):
                     await _translate_single_chunk(idx)
-            else:
-                tasks = [_translate_single_chunk(idx) for idx in chunks_to_translate]
-                await asyncio.gather(*tasks)
+                    progress.advance(task_id)
+
+                if use_rolling_history or self.settings['features'].get('summary_history', False):
+                    for idx in chunks_to_translate:
+                        await _translate_with_progress(idx)
+                else:
+                    tasks = [_translate_with_progress(idx) for idx in chunks_to_translate]
+                    await asyncio.gather(*tasks)
 
             # ── Re-translate failed chunks ──────────────────────────────
             if failed_chunks:
-                print(f"\n🔄 Found {len(failed_chunks)} failed chunks. Starting re-translation phase...")
+                self.console.print(f"\n[bold red]🔄 Found {len(failed_chunks)}[/bold red] failed chunks. Starting re-translation phase...")
                 self.logger.info(f"Starting re-translation phase for {len(failed_chunks)} failed chunks.")
                 
                 re_pass = 1
                 max_re_passes = 3
                 base_temp = self.model_opts.get('temperature', 0.25)
                 while failed_chunks and re_pass <= max_re_passes:
-                    print(f"   🔄 Re-translation Pass {re_pass}/{max_re_passes}...")
+                    self.console.print(f"   [bold yellow]🔄 Re-translation Pass {re_pass}/{max_re_passes}...")
                     self.logger.info(f"Re-translation Pass {re_pass}/{max_re_passes}")
                     
                     failed_indices = list(failed_chunks.keys())
                     for idx in failed_indices:
-                        print(f"      🔄 Retrying Chunk {idx+1:03d}/{total}...")
+                        # print(f"      🔄 Retrying Chunk {idx+1:03d}/{total}...")
                         try:
                             t_start = time.time()
                             chunk = chunks[idx]
@@ -1146,7 +1294,7 @@ class TranslationPipeline:
                                     cpt,
                                 )
 
-                            translation = await self._translate_chunk_with_retry(
+                            translation, summary = await self._translate_chunk_with_retry(
                                 chunk,
                                 context_snippet,
                                 g_str,
@@ -1160,18 +1308,25 @@ class TranslationPipeline:
                             )
                             
                             translated_chunks[idx] = translation
+                            if self.settings['features'].get('summary_history', False):
+                                summarized_chunks[idx] = summary
                             del failed_chunks[idx]
 
                             await self._save_checkpoint_async(input_path.stem, {
                                 'total_chunks': total,
                                 'translated_chunks': {str(k): v for k, v in translated_chunks.items()},
+                                'summarized_chunks': {str(k): v for k, v in summarized_chunks.items()},
+                                'failed_chunks': {str(k): v for k, v in failed_chunks.items()},
                                 'source_lang': detected_lang,
                                 'glossary_terms': self.glossary_mgr.get_all(),
                                 'characters': self.glossary_mgr.get_characters(),
                             })
 
+                            # Update incremental output file
+                            await self._write_incremental_output(input_path, translated_chunks, failed_chunks, total)
+
                             elapsed = time.time() - t_start
-                            print(f"      ✅ Chunk {idx+1:03d}/{total} successfully re-translated in {elapsed:.1f}s")
+                            self.console.print(f"      [green]✅ Chunk {idx+1:03d}/{total} re-translated in {elapsed:.1f}s[/green]")
                             self.logger.info(f"Chunk {idx+1:03d}/{total} successfully re-translated in {elapsed:.1f}s")
                         except Exception as e:
                             print(f"      ❌ Chunk {idx+1:03d}/{total} still failed on pass {re_pass}: {e}")
@@ -1192,17 +1347,49 @@ class TranslationPipeline:
         report_path = self.output_dir / f"{self.project}_glossary_report.md"
         await self._write_text_file(report_path, self.glossary_mgr.export_report())
 
-        # Clean checkpoint on success (only if no chunks failed)
+        # Explicitly save a status report file so the user can easily see what succeeded/failed
+        status_file_path = self.output_dir / f"{input_path.stem}_status.json"
+        
+        # Build success and error list
+        successful_ids = sorted([int(k)+1 for k in translated_chunks.keys() if k not in failed_chunks])
+        error_dict = {f"Chunk {int(k)+1}": err for k, err in failed_chunks.items()}
+        
+        status_report = {
+            "Total_Chunks": total,
+            "Successful_Count": len(successful_ids),
+            "Failed_Count": len(failed_chunks),
+            "Failed_Chunks_Details": error_dict,
+            "Successful_Chunks": successful_ids
+        }
+        
+        # Always write the status report
+        await asyncio.get_event_loop().run_in_executor(
+            self.executor,
+            lambda: status_file_path.write_text(json.dumps(status_report, ensure_ascii=False, indent=2), encoding='utf-8')
+        )
+        self.console.print(f"   [bold yellow]📝 Saved translation status report to: {status_file_path.name}[/bold yellow]")
+
         if failed_chunks:
-            print(f"\n   ⚠️  WARNING: File completed with {len(failed_chunks)} failed chunks:")
+            self.console.print(f"\n   [bold red]⚠️  WARNING: File completed with {len(failed_chunks)} failed chunks:")
             self.logger.warning(f"File completed with {len(failed_chunks)} failed chunks: {failed_chunks}")
             for k, err in failed_chunks.items():
-                print(f"      - Chunk {k+1}: {err}")
-        else:
-            await self._delete_checkpoint_async(input_path.stem)
+                self.console.print(f"      [red]- Chunk {k+1}: {err}")
 
-        print(f"   ✨ Done → {output_path.name}")
-        print(f"   📚 Glossary: {self.glossary_mgr.term_count()} terms | "
+        # We keep the checkpoint instead of deleting it (even if successful), 
+        # so that resume logic will see it's completely translated and won't restart from scratch.
+        # It also preserves the state of any failed_chunks so --resume can retry them.
+        await self._save_checkpoint_async(input_path.stem, {
+            'total_chunks': total,
+            'translated_chunks': {str(k): v for k, v in translated_chunks.items()},
+            'summarized_chunks': {str(k): v for k, v in summarized_chunks.items()},
+            'failed_chunks': {str(k): v for k, v in failed_chunks.items()},
+            'source_lang': detected_lang,
+            'glossary_terms': self.glossary_mgr.get_all(),
+            'characters': self.glossary_mgr.get_characters(),
+        })
+
+        self.console.print(f"   [bold green]✨ Done → {output_path.name}")
+        self.console.print(f"   [bold blue]📚 Glossary: {self.glossary_mgr.term_count()} terms | "
             f"👥 Characters: {self.glossary_mgr.char_count()} tracked")
 
         return output_path
@@ -1216,7 +1403,7 @@ class TranslationPipeline:
 
         if input_path.is_file():
             if input_path.suffix.lower() not in supported:
-                print(f"⚠️  Unsupported file type: {input_path.suffix}")
+                self.console.print(f"[bold red]⚠️  Unsupported file type: {input_path.suffix}")
                 return
             await self.translate_file(input_path, resume=resume)
 
@@ -1226,14 +1413,14 @@ class TranslationPipeline:
                 files.extend(sorted(input_path.glob(f'*{ext}')))
 
             if not files:
-                print("⚠️  No .txt or .md files found in directory.")
+                self.console.print("[bold red]⚠️  No .txt or .md files found in directory.")
                 return
 
             if self.use_global_semaphore:
-                print(f"\n📁 Found {len(files)} files | global concurrency limit: {self.max_concurrent_requests}")
+                self.console.print(f"\n[bold cyan]📁 Found {len(files)} files | global concurrency limit: {self.max_concurrent_requests}")
                 local_semaphore = None
             else:
-                print(f"\n📁 Found {len(files)} files | {self.max_workers} parallel workers")
+                self.console.print(f"\n[bold cyan]📁 Found {len(files)} files | {self.max_workers} parallel workers")
                 local_semaphore = asyncio.Semaphore(self.max_workers)
 
             async def _translate_guarded(f: Path):
@@ -1250,11 +1437,11 @@ class TranslationPipeline:
 
             for f, result in zip(files, results):
                 if isinstance(result, Exception):
-                    print(f"   ❌ FAILED: {f.name} → {result}")
+                    self.console.print(f"   [bold red]❌ FAILED: {f.name} → {result}")
 
         else:
-            print(f"❌ Path not found: {input_path}")
+            self.console.print(f"[bold red]❌ Path not found: {input_path}")
             return
 
-        print(f"\n🎉 All done! Output in: {self.output_dir}/")
+        self.console.print(f"\n[bold green]🎉 All done![/bold green] Output in: {self.output_dir}/")
         self.executor.shutdown(wait=False)

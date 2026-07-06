@@ -15,13 +15,24 @@ import contextvars
 import asyncio
 
 # Ensure parent directory is in path so we can import src modules
-sys.path.append(str(Path(__file__).parent.resolve()))
+BASE_DIR = Path(__file__).parent.resolve()
+sys.path.append(str(BASE_DIR))
 
 import src.pipeline
 from src.pipeline import TranslationPipeline
 from src.checkpoint_manager import CheckpointManager
 from src.glossary_manager import GlossaryManager
 from src.chunker import chunk_text
+
+def validate_project_name(project: str) -> str:
+    if not re.match(r"^[a-zA-Z0-9_-]+$", project):
+        raise HTTPException(status_code=400, detail="Tên dự án không hợp lệ. Chỉ chấp nhận chữ cái, số, gạch dưới và gạch ngang.")
+    return project
+
+def validate_novel_name(novel: str) -> str:
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", novel):
+        raise HTTPException(status_code=400, detail="Tên tiểu thuyết không hợp lệ.")
+    return novel
 
 # Load dotenv
 import dotenv
@@ -41,6 +52,7 @@ app.add_middleware(
 # ContextVar for logging
 current_project_var = contextvars.ContextVar("current_project", default=None)
 project_status = {}
+project_tasks = {}
 
 # Intercept prints globally to prevent UnicodeEncodeError on Windows
 import builtins
@@ -121,7 +133,7 @@ class CharacterCreate(BaseModel):
 
 @app.get("/api/genres")
 def get_genres():
-    genres_path = Path("config/genres.yaml")
+    genres_path = BASE_DIR / "config" / "genres.yaml"
     if not genres_path.exists():
         raise HTTPException(status_code=404, detail="genres.yaml not found")
     with open(genres_path, "r", encoding="utf-8") as f:
@@ -130,7 +142,7 @@ def get_genres():
 
 @app.get("/api/settings")
 def get_settings():
-    settings_path = Path("config/settings.yaml")
+    settings_path = BASE_DIR / "config" / "settings.yaml"
     if not settings_path.exists():
         raise HTTPException(status_code=404, detail="settings.yaml not found")
     with open(settings_path, "r", encoding="utf-8") as f:
@@ -139,35 +151,67 @@ def get_settings():
 
 @app.post("/api/settings")
 def save_settings(settings: SettingsUpdate):
-    settings_path = Path("config/settings.yaml")
+    settings_path = BASE_DIR / "config" / "settings.yaml"
     with open(settings_path, "w", encoding="utf-8") as f:
         yaml.dump(settings.dict(), f, allow_unicode=True, default_flow_style=False)
     return {"message": "Settings saved successfully"}
 
 @app.get("/api/projects")
 def get_projects():
-    data_dir = Path("data")
     projects = set()
+    data_dir = BASE_DIR / "data"
     if data_dir.exists():
         for p in data_dir.glob("*_glossary.json"):
-            projects.add(p.name[:-14]) # Remove _glossary.json
+            projects.add(p.name[:-14])
             
-    # Also scan checkpoints
-    checkpoint_dir = Path("checkpoints")
+    checkpoint_dir = BASE_DIR / "checkpoints"
     if checkpoint_dir.exists():
         for p in checkpoint_dir.iterdir():
             if p.is_dir() and p.name != "__pycache__":
                 projects.add(p.name)
                 
+    p_dir = BASE_DIR / "data" / "projects"
+    if p_dir.exists():
+        for d in p_dir.iterdir():
+            if d.is_dir():
+                projects.add(d.name)
+                
     return sorted(list(projects))
+
+@app.post("/api/projects/{project}")
+def create_project(project: str):
+    validate_project_name(project)
+    p_dir = BASE_DIR / "data" / "projects" / project / "novels"
+    p_dir.mkdir(parents=True, exist_ok=True)
+    return {"message": "Project created"}
+
+import shutil
+@app.delete("/api/projects/{project}")
+def delete_project(project: str):
+    validate_project_name(project)
+    # delete novels
+    p_dir = BASE_DIR / "data" / "projects" / project
+    if p_dir.exists():
+        shutil.rmtree(p_dir, ignore_errors=True)
+    # delete glossary
+    g_file = BASE_DIR / "data" / f"{project}_glossary.json"
+    if g_file.exists():
+        g_file.unlink()
+    # delete checkpoints
+    c_dir = BASE_DIR / "checkpoints" / project
+    if c_dir.exists():
+        shutil.rmtree(c_dir, ignore_errors=True)
+    return {"message": "Project deleted"}
 
 @app.get("/api/projects/{project}/glossary")
 def get_glossary(project: str):
+    validate_project_name(project)
     # Setup glossary manager
-    settings_path = Path("config/settings.yaml")
+    settings_path = BASE_DIR / "config" / "settings.yaml"
     with open(settings_path, "r", encoding="utf-8") as f:
         settings = yaml.safe_load(f)
-    data_dir = settings.get("paths", {}).get("data_dir", "data")
+    data_dir_path = settings.get("paths", {}).get("data_dir", "data")
+    data_dir = str(BASE_DIR / data_dir_path)
     
     mgr = GlossaryManager(project, base_dir=data_dir)
     return {
@@ -177,10 +221,12 @@ def get_glossary(project: str):
 
 @app.post("/api/projects/{project}/glossary/term")
 def add_glossary_term(project: str, data: TermCreate):
-    settings_path = Path("config/settings.yaml")
+    validate_project_name(project)
+    settings_path = BASE_DIR / "config" / "settings.yaml"
     with open(settings_path, "r", encoding="utf-8") as f:
         settings = yaml.safe_load(f)
-    data_dir = settings.get("paths", {}).get("data_dir", "data")
+    data_dir_path = settings.get("paths", {}).get("data_dir", "data")
+    data_dir = str(BASE_DIR / data_dir_path)
     
     mgr = GlossaryManager(project, base_dir=data_dir)
     with mgr.lock:
@@ -191,10 +237,12 @@ def add_glossary_term(project: str, data: TermCreate):
 
 @app.delete("/api/projects/{project}/glossary/term/{term}")
 def delete_glossary_term(project: str, term: str):
-    settings_path = Path("config/settings.yaml")
+    validate_project_name(project)
+    settings_path = BASE_DIR / "config" / "settings.yaml"
     with open(settings_path, "r", encoding="utf-8") as f:
         settings = yaml.safe_load(f)
-    data_dir = settings.get("paths", {}).get("data_dir", "data")
+    data_dir_path = settings.get("paths", {}).get("data_dir", "data")
+    data_dir = str(BASE_DIR / data_dir_path)
     
     mgr = GlossaryManager(project, base_dir=data_dir)
     with mgr.lock:
@@ -207,10 +255,12 @@ def delete_glossary_term(project: str, term: str):
 
 @app.post("/api/projects/{project}/glossary/character")
 def add_glossary_character(project: str, data: CharacterCreate):
-    settings_path = Path("config/settings.yaml")
+    validate_project_name(project)
+    settings_path = BASE_DIR / "config" / "settings.yaml"
     with open(settings_path, "r", encoding="utf-8") as f:
         settings = yaml.safe_load(f)
-    data_dir = settings.get("paths", {}).get("data_dir", "data")
+    data_dir_path = settings.get("paths", {}).get("data_dir", "data")
+    data_dir = str(BASE_DIR / data_dir_path)
     
     mgr = GlossaryManager(project, base_dir=data_dir)
     with mgr.lock:
@@ -221,10 +271,12 @@ def add_glossary_character(project: str, data: CharacterCreate):
 
 @app.delete("/api/projects/{project}/glossary/character/{name}")
 def delete_glossary_character(project: str, name: str):
-    settings_path = Path("config/settings.yaml")
+    validate_project_name(project)
+    settings_path = BASE_DIR / "config" / "settings.yaml"
     with open(settings_path, "r", encoding="utf-8") as f:
         settings = yaml.safe_load(f)
-    data_dir = settings.get("paths", {}).get("data_dir", "data")
+    data_dir_path = settings.get("paths", {}).get("data_dir", "data")
+    data_dir = str(BASE_DIR / data_dir_path)
     
     mgr = GlossaryManager(project, base_dir=data_dir)
     with mgr.lock:
@@ -237,10 +289,12 @@ def delete_glossary_character(project: str, name: str):
 
 @app.get("/api/projects/{project}/checkpoints")
 def get_project_checkpoints(project: str):
-    settings_path = Path("config/settings.yaml")
+    validate_project_name(project)
+    settings_path = BASE_DIR / "config" / "settings.yaml"
     with open(settings_path, "r", encoding="utf-8") as f:
         settings = yaml.safe_load(f)
-    cp_dir = settings.get("paths", {}).get("checkpoint_dir", "checkpoints")
+    cp_dir_path = settings.get("paths", {}).get("checkpoint_dir", "checkpoints")
+    cp_dir = str(BASE_DIR / cp_dir_path)
     mgr = CheckpointManager(project, base_dir=cp_dir)
     checkpoints = mgr.list_checkpoints()
     res = []
@@ -279,7 +333,7 @@ async def run_translation_task(
             genre=genre,
             target_lang=target_lang,
             source_lang=source_lang,
-            output_dir="output",
+            output_dir=str(BASE_DIR / "output"),
         )
         output_path = await pipeline.translate_file(file_path, resume=resume)
         
@@ -293,6 +347,169 @@ async def run_translation_task(
         project_status[project]["error"] = str(e)
         project_status[project]["step"] = "Failed"
 
+
+@app.get("/api/projects/{project}/novels")
+def get_novels(project: str):
+    validate_project_name(project)
+    temp_dir = BASE_DIR / "data" / "projects" / project / "novels"
+    novels = []
+    if temp_dir.exists():
+        for p in temp_dir.glob("*.*"):
+            if p.is_file():
+                novels.append(p.name)
+    return novels
+
+@app.post("/api/projects/{project}/novels")
+async def upload_novel(
+    project: str,
+    text: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None)
+):
+    validate_project_name(project)
+    temp_dir = BASE_DIR / "data" / "projects" / project / "novels"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    if file:
+        validate_novel_name(file.filename)
+        file_path = temp_dir / file.filename
+        content = await file.read()
+        file_path.write_bytes(content)
+        return {"message": "Uploaded", "novel": file.filename}
+    elif text:
+        file_path = temp_dir / f"{project}_input.txt"
+        file_path.write_text(text, encoding="utf-8")
+        return {"message": "Saved", "novel": f"{project}_input.txt"}
+    raise HTTPException(status_code=400, detail="Provide text or file")
+
+
+@app.delete("/api/projects/{project}/novels/{novel}")
+def delete_novel(project: str, novel: str):
+    validate_project_name(project)
+    validate_novel_name(novel)
+    file_path = BASE_DIR / "data" / "projects" / project / "novels" / novel
+    if file_path.exists():
+        file_path.unlink()
+    return {"message": "Novel deleted"}
+
+@app.get("/api/projects/{project}/novels/{novel}/chunks")
+def get_chunks(project: str, novel: str, page: int = 1, limit: int = 50):
+    validate_project_name(project)
+    validate_novel_name(novel)
+    file_path = BASE_DIR / "data" / "projects" / project / "novels" / novel
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Novel not found")
+        
+    text = file_path.read_text(encoding="utf-8")
+    
+    settings_path = BASE_DIR / "config" / "settings.yaml"
+    with open(settings_path, "r", encoding="utf-8") as f:
+        settings = yaml.safe_load(f)
+        
+    chunk_size = settings.get("translation", {}).get("chunk_size", 2500)
+    # Detect language using the same logic or just use auto
+    from src.chunker import chunk_text, detect_script
+    detected_lang = detect_script(text)
+    chunks = chunk_text(text, chunk_size, source_lang=detected_lang)
+    
+    # Load checkpoint
+    cp_dir_path = settings.get("paths", {}).get("checkpoint_dir", "checkpoints")
+    cp_dir = str(BASE_DIR / cp_dir_path)
+    mgr = CheckpointManager(project, base_dir=cp_dir)
+    checkpoint = mgr.load(file_path.stem)
+    
+    translated = {}
+    failed = {}
+    if checkpoint:
+        translated = checkpoint.get("translated_chunks", {})
+        failed = checkpoint.get("failed_chunks", {})
+        
+    total = len(chunks)
+    start_idx = (page - 1) * limit
+    end_idx = min(start_idx + limit, total)
+    
+    result = []
+    for i in range(start_idx, end_idx):
+        status = "pending"
+        trans_text = ""
+        if str(i) in translated:
+            status = "completed"
+            trans_text = translated[str(i)]
+        elif str(i) in failed:
+            status = "failed"
+            trans_text = failed[str(i)]
+            
+        result.append({
+            "id": i,
+            "original": chunks[i],
+            "translated": trans_text,
+            "status": status
+        })
+        
+    return {
+        "total_chunks": total,
+        "page": page,
+        "limit": limit,
+        "chunks": result
+    }
+
+class TranslateChunksRequest(BaseModel):
+    target_chunks: Optional[List[int]] = None
+    genre: str = "default"
+    source_lang: str = "auto"
+    target_lang: str = "vi"
+    resume: bool = True
+
+@app.post("/api/projects/{project}/novels/{novel}/translate_chunks")
+async def translate_chunks(
+    project: str,
+    novel: str,
+    req: TranslateChunksRequest
+):
+    validate_project_name(project)
+    validate_novel_name(novel)
+    file_path = BASE_DIR / "data" / "projects" / project / "novels" / novel
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Novel not found")
+        
+    if project in project_status and project_status[project]["status"] == "translating":
+        raise HTTPException(status_code=400, detail="A translation task is already running")
+        
+    src_lang_override = None if req.source_lang == "auto" else req.source_lang
+    
+    # We use a custom task that passes target_chunks
+    async def custom_task():
+        current_project_var.set(project)
+        project_status[project] = {
+            "status": "translating",
+            "current_chunk": 0,
+            "total_chunks": 0,
+            "step": "Starting pipeline...",
+            "logs": [],
+            "error": None,
+            "output_file": None
+        }
+        try:
+            pipeline = TranslationPipeline(
+                project=project,
+                genre=req.genre,
+                target_lang=req.target_lang,
+                source_lang=src_lang_override,
+                output_dir=str(BASE_DIR / "output"),
+            )
+            output_path = await pipeline.translate_file(file_path, resume=req.resume, target_chunks=req.target_chunks)
+            project_status[project]["status"] = "completed"
+            project_status[project]["output_file"] = output_path.name
+            project_status[project]["step"] = "Completed"
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            project_status[project]["status"] = "failed"
+            project_status[project]["error"] = str(e)
+            project_status[project]["step"] = "Failed"
+
+    task = asyncio.create_task(custom_task())
+    project_tasks[project] = task
+    return {"message": "Translation started"}
+
 @app.post("/api/projects/{project}/translate")
 async def start_translation(
     project: str,
@@ -303,6 +520,7 @@ async def start_translation(
     target_lang: str = Form("vi"),
     resume: bool = Form(False)
 ):
+    validate_project_name(project)
     # Verify API key
     if not os.environ.get("GEMINI_API_KEY"):
         raise HTTPException(status_code=400, detail="GEMINI_API_KEY environment variable is not set")
@@ -311,11 +529,12 @@ async def start_translation(
         raise HTTPException(status_code=400, detail="A translation task is already running for this project")
 
     # Set up directories
-    temp_dir = Path("data/temp_inputs")
+    temp_dir = BASE_DIR / "data" / "projects" / project / "novels"
     temp_dir.mkdir(parents=True, exist_ok=True)
     
     file_path = None
     if file:
+        validate_novel_name(file.filename)
         file_path = temp_dir / file.filename
         content = await file.read()
         file_path.write_bytes(content)
@@ -325,10 +544,11 @@ async def start_translation(
     else:
         # Check if there is an active checkpoint we can resume
         if resume:
-            settings_path = Path("config/settings.yaml")
+            settings_path = BASE_DIR / "config" / "settings.yaml"
             with open(settings_path, "r", encoding="utf-8") as f:
                 settings = yaml.safe_load(f)
-            cp_dir = settings.get("paths", {}).get("checkpoint_dir", "checkpoints")
+            cp_dir_path = settings.get("paths", {}).get("checkpoint_dir", "checkpoints")
+            cp_dir = str(BASE_DIR / cp_dir_path)
             mgr = CheckpointManager(project, base_dir=cp_dir)
             checkpoints = mgr.list_checkpoints()
             if checkpoints:
@@ -350,7 +570,7 @@ async def start_translation(
 
     # Start background task
     src_lang_override = None if source_lang == "auto" else source_lang
-    asyncio.create_task(run_translation_task(
+    task = asyncio.create_task(run_translation_task(
         project=project,
         file_path=file_path,
         resume=resume,
@@ -358,17 +578,20 @@ async def start_translation(
         target_lang=target_lang,
         source_lang=src_lang_override
     ))
+    project_tasks[project] = task
     
     return {"message": "Translation started", "project": project}
 
 @app.get("/api/projects/{project}/status")
 def get_status(project: str):
+    validate_project_name(project)
     if project not in project_status:
         # Check if there are checkpoints, if so, report idle with checkpoint progress
-        settings_path = Path("config/settings.yaml")
+        settings_path = BASE_DIR / "config" / "settings.yaml"
         with open(settings_path, "r", encoding="utf-8") as f:
             settings = yaml.safe_load(f)
-        cp_dir = settings.get("paths", {}).get("checkpoint_dir", "checkpoints")
+        cp_dir_path = settings.get("paths", {}).get("checkpoint_dir", "checkpoints")
+        cp_dir = str(BASE_DIR / cp_dir_path)
         mgr = CheckpointManager(project, base_dir=cp_dir)
         checkpoints = mgr.list_checkpoints()
         
@@ -400,16 +623,20 @@ def get_status(project: str):
 
 @app.get("/api/projects/{project}/download/{filename}")
 def download_file(project: str, filename: str):
-    output_dir = Path("output")
+    validate_project_name(project)
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", filename):
+        raise HTTPException(status_code=400, detail="Tên tệp không hợp lệ")
+    output_dir = BASE_DIR / "output"
     file_path = output_dir / filename
     if not file_path.exists():
         # Maybe check glossary report
         if filename == f"{project}_glossary_report.md":
             # Generate it on the fly or load it from data
-            settings_path = Path("config/settings.yaml")
+            settings_path = BASE_DIR / "config" / "settings.yaml"
             with open(settings_path, "r", encoding="utf-8") as f:
                 settings = yaml.safe_load(f)
-            data_dir = settings.get("paths", {}).get("data_dir", "data")
+            data_dir_path = settings.get("paths", {}).get("data_dir", "data")
+            data_dir = str(BASE_DIR / data_dir_path)
             mgr = GlossaryManager(project, base_dir=data_dir)
             report_content = mgr.export_report()
             # Save it temporarily
@@ -423,6 +650,19 @@ def download_file(project: str, filename: str):
 
 # Serve frontend static files
 # Place frontend static files at frontend/
-frontend_dir = Path(__file__).parent.parent / "frontend"
+frontend_dir = BASE_DIR.parent / "frontend" / "dist"
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
+
+
+@app.post("/api/projects/{project}/cancel")
+def cancel_translation(project: str):
+    validate_project_name(project)
+    if project in project_tasks:
+        project_tasks[project].cancel()
+        if project in project_status:
+            project_status[project]["status"] = "failed"
+            project_status[project]["step"] = "Đã hủy"
+            project_status[project]["error"] = "User cancelled"
+        return {"message": "Cancelled"}
+    return {"message": "No active task"}

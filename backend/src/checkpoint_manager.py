@@ -70,8 +70,9 @@ class CheckpointManager:
         return [p.stem for p in self.project_dir.glob('*.json')]
 
     def get_progress(self, file_stem: str) -> tuple[int, int] | None:
-        """Returns (chunk_index, total_chunks) or None if no checkpoint."""
+        """Returns (translated_count, total_chunks) or None if no checkpoint."""
         data = self.load(file_stem)
         if data:
-            return data.get('chunk_index', 0), data.get('total_chunks', 0)
+            translated_count = len(data.get('translated_chunks', {}))
+            return translated_count, data.get('total_chunks', 0)
         return None

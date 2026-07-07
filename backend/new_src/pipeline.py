@@ -1,15 +1,6 @@
 """
-pipeline.py - Parallel translation engine using Google GenAI API (Gemma 4 31B IT).
-
-Flow per file:
-  1. Detect source language (auto, first 2000 chars)
-  2. Pre-extract baseline glossary and characters from the first ~15,000 chars (1 API call)
-  3. Split text into chunks
-  4. Translate all chunks in parallel concurrently using asyncio.gather:
-     - For context, each chunk N receives the last ~1000 characters of the original text of chunk N-1.
-     - Each chunk uses the pre-extracted glossary and characters list.
-  5. Assemble translated parts in the correct order.
-  6. Save output and cleanup checkpoints.
+pipeline.py - Orchestrator for the translation pipeline.
+Coordinates chunking, history-building, parallel/sequential translation execution, checkpointing, and output assembly.
 """
 
 import asyncio
@@ -25,93 +16,41 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Optional
 
-from google import genai
-from google.genai import types
-from google.genai.types import GenerateContentConfig
-from google.genai.errors import APIError
 import yaml
+import dotenv
 
 from .chunker import chunk_text, get_chunk_stats, estimate_tokens, detect_script, get_chars_per_token
 from .checkpoint_manager import CheckpointManager
 from .glossary_manager import GlossaryManager
 from .lang_detector import detect_source_language, get_source_lang_label
 
-import dotenv
+# Modular helper imports
+from .exceptions import (
+    TranslationError,
+    GeminiAPIError,
+    TruncatedResponseError,
+    InvalidFormatError,
+    DuplicateTranslationError,
+    LazyTranslationError,
+)
+from .similarity import calculate_tfidf_cosine_similarity
+from .xml_parser import (
+    parse_xml_output_only,
+    parse_summary_output,
+    parse_glossary_output,
+    parse_proofread_output_only,
+)
+from .prompt_builder import (
+    build_system_prompt,
+    build_user_message,
+    build_proofread_prompt,
+    build_pre_extract_prompt,
+)
+from .api_client import GeminiClient
 
 dotenv.load_dotenv()
 
 current_file_stem = contextvars.ContextVar('current_file_stem', default='default')
-
-# Custom Exception Classes
-class TranslationError(Exception):
-    """Base exception for translation errors."""
-    pass
-
-class GeminiAPIError(TranslationError):
-    """API error (e.g. 429, 5xx, or network timeout)."""
-    def __init__(self, message, status_code=None):
-        super().__init__(message)
-        self.status_code = status_code
-
-class TruncatedResponseError(TranslationError):
-    """The response was truncated (finish_reason == 'MAX_TOKENS')."""
-    pass
-
-class InvalidFormatError(TranslationError):
-    """The response did not contain the expected translation tags."""
-    pass
-
-class DuplicateTranslationError(TranslationError):
-    """Raised when the translation is too similar to recent translations."""
-    pass
-
-class LazyTranslationError(TranslationError):
-    """Raised when the translation is too similar to the source text."""
-    pass
-
-
-def calculate_tfidf_cosine_similarity(text1: str, text2: str) -> float:
-    """Calculates TF-IDF Weighted Cosine Similarity between two texts in pure Python."""
-    import re
-    import math
-    import collections
-    
-    words1 = re.findall(r'\w+', text1.lower())
-    words2 = re.findall(r'\w+', text2.lower())
-    
-    # Use Trigrams (3-grams) to capture phrase structure, 
-    # crucial for preventing false-positives in monosyllabic languages like Vietnamese/Chinese
-    b1 = list(zip(words1, words1[1:], words1[2:]))
-    b2 = list(zip(words2, words2[1:], words2[2:]))
-    
-    if not b1 or not b2:
-        return 0.0
-        
-    c1 = collections.Counter(b1)
-    c2 = collections.Counter(b2)
-    
-    all_words = set(c1.keys()).union(set(c2.keys()))
-    
-    idf = {}
-    for word in all_words:
-        df = 0
-        if word in c1:
-            df += 1
-        if word in c2:
-            df += 1
-        idf[word] = math.log(2.0 / df) + 1.0
-        
-    vec1 = {word: c1[word] * idf[word] for word in c1}
-    vec2 = {word: c2[word] * idf[word] for word in c2}
-    
-    dot_product = sum(vec1[w] * vec2[w] for w in vec1 if w in vec2)
-    norm_a = sum(v * v for v in vec1.values())
-    norm_b = sum(v * v for v in vec2.values())
-    
-    if norm_a == 0.0 or norm_b == 0.0:
-        return 0.0
-        
-    return dot_product / (math.sqrt(norm_a) * math.sqrt(norm_b))
 
 
 class TranslationPipeline:
@@ -143,7 +82,6 @@ class TranslationPipeline:
         original_rich_print = self.console.print
         # Override print to handle Windows console encoding issues safely
         import sys
-        import builtins
         def safe_rich_print(*args, **kwargs):
             try:
                 original_rich_print(*args, **kwargs)
@@ -157,12 +95,6 @@ class TranslationPipeline:
                     sys.stdout.flush()
                 except Exception:
                     pass
-            
-            try:
-                message = " ".join(str(arg) for arg in args)
-                builtins.print(message, skip_stdout=True)
-            except Exception:
-                pass
         self.console.print = safe_rich_print
         self.loggers = {}
         
@@ -179,10 +111,8 @@ class TranslationPipeline:
         self.output_dir = Path(output_dir or self.settings['paths']['output_dir'])
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Managers
-        genre_label = self.genres_cfg['genres'].get(self.genre, {}).get('label', self.genre)
-        self.checkpoint_mgr = CheckpointManager(project, self.settings['paths']['checkpoint_dir'])
-        self.glossary_mgr   = GlossaryManager(project, genre_label, self.settings['paths']['data_dir'])
+        self.checkpoint_mgr = CheckpointManager(project, base_dir=self.settings['paths'].get('checkpoint_dir', 'checkpoints'))
+        self.glossary_mgr   = GlossaryManager(project, base_dir=self.settings['paths'].get('glossary_dir', 'data'))
 
         # Concurrency settings
         concurrency_cfg = self.settings.get('concurrency', {})
@@ -213,16 +143,13 @@ class TranslationPipeline:
             'top_p':       self.settings['model'].get('top_p', 0.9),
         }
 
-        # Initialize Google GenAI client (requires GEMINI_API_KEY env var)
+        # Initialize API client helper
         if not os.environ.get("GEMINI_API_KEY"):
             raise ValueError(
                 "❌ Environment variable GEMINI_API_KEY is not set.\n"
-                "   Please set it using:\n"
-                "   PowerShell: $env:GEMINI_API_KEY='your_api_key'\n"
-                "   CMD: set GEMINI_API_KEY=your_api_key\n"
-                "   Linux/macOS: export GEMINI_API_KEY='your_api_key'"
+                "   Please set it in your .env file or environment."
             )
-        self.client = genai.Client()
+        self.api_client = GeminiClient(self.model, self.settings, self.model_opts, self.executor)
 
     @property
     def logger(self):
@@ -264,96 +191,16 @@ class TranslationPipeline:
             return self._source_lang_override
         return detect_source_language(text)
 
-    def _get_source_rules(self, source_lang: str) -> str:
-        """Return the matching source_rules_XX block from prompts yaml."""
-        key = f'source_rules_{source_lang}'
-        return self.prompts.get(key, self.prompts.get('source_rules_en', '')).strip()
-
-    @staticmethod
-    def _safe_format(template: str, **kwargs) -> str:
-        """
-        Safe string substitution that won't choke on literal { } in prompt text
-        (e.g. JSON examples inside the YAML prompts).
-        Only replaces {key} tokens that are in kwargs; leaves everything else alone.
-        """
-        for key, value in kwargs.items():
-            template = template.replace('txt' if key == 'text' else '{' + key + '}', str(value))
-        return template
-
-    # ------------------------------------------------------------------
-    # Prompt builders
-    # ------------------------------------------------------------------
-    def _build_system_prompt(self, source_lang: str, glossary_str: str = "", characters_str: str = "") -> str:
-        base         = self.prompts['system_base'].strip()
-        source_rules = self._get_source_rules(source_lang)
-
-        genre_cfg   = self.genres_cfg['genres'].get(self.genre, {})
-        genre_hint  = (f"Thể loại: {genre_cfg.get('label', self.genre)}. "
-                    f"{genre_cfg.get('hint', '')}")
-
-        lang_cfg         = self.genres_cfg['languages'].get(self.target_lang, {})
-        lang_instruction = lang_cfg.get('instruction', f'Translate to {self.target_lang}.')
-
-        term_cats = genre_cfg.get('term_categories', [])
-        if term_cats:
-            term_cats_str = ", ".join(term_cats)
-            term_instruction = f"\n  - ĐỐI CHIẾU THỂ LOẠI: Phân đoạn này thuộc thể loại '{genre_cfg.get('label', self.genre)}'. Chú ý trích xuất các thuật ngữ thuộc danh mục sau: {term_cats_str}."
-        else:
-            term_instruction = ""
-
-        base = base.replace('{term_categories_instruction}', term_instruction)
-
-        system_prompt = f"{base}\n\n{source_rules}\n\n{genre_hint}\n{lang_instruction}"
-        
-        if self.settings['features'].get('summary_history', False):
-            system_prompt += "\n\n- Tóm tắt ngắn gọn nội dung chính của phân đoạn này bằng tiếng Việt trong thẻ <summary>...</summary>."
-        
-        if glossary_str:
-            system_prompt += f"\n\n[GLOSSARY - DỊCH ĐÚNG THEO BẢNG NÀY]\n{glossary_str}"
-        if characters_str:
-            system_prompt += f"\n\n[NHÂN VẬT & XƯNG HÔ - GIỮ NHẤT QUÁN]\n{characters_str}"
-            
-        return system_prompt
-
-    def _build_user_message(
-        self,
-        chunk: str,
-        summary: str,
-        glossary_str: str,
-        characters_str: str,
-    ) -> str:
-        parts = []
-
-        if summary:
-            tpl = self.prompts['context_section']
-            # Manual format to avoid JSON template braces issue
-            parts.append(tpl.replace('{summary}', summary).rstrip())
-
-        if glossary_str:
-            tpl = self.prompts['glossary_section']
-            parts.append(tpl.replace('{terms}', glossary_str).rstrip())
-
-        if characters_str:
-            tpl = self.prompts['characters_section']
-            parts.append(tpl.replace('{characters}', characters_str).rstrip())
-
-        prefix = '\n\n'.join(parts)
-        recitation_bypass = "\n\n[LƯU Ý DỊCH THUẬT]\nHãy dịch thoát ý và dùng từ ngữ của riêng bạn, tránh dịch y hệt các câu chữ có sẵn trực tuyến để không bị bộ lọc trùng lặp (Recitation filter) chặn."
-        if prefix:
-            return prefix + recitation_bypass + '\n\n[VĂN BẢN CẦN DỊCH]\n' + chunk
-        return '[VĂN BẢN CẦN DỊCH]\n' + chunk
-
     def _sanitize_sensitive_words(self, text: str) -> str:
-        if not text:
+        """Obfuscates highly sensitive trigger words from raw input if configured."""
+        sensitive_cfg = self.settings.get('sensitive_words', {})
+        if not sensitive_cfg.get('enabled', False):
             return text
-        sensitive_words = [
-            "贱人", "勾栏", "野种", "妓女", "贱妇", "杂种", 
-            "畜生", "强奸", "轮奸", "奸污", "自杀", "色狼", 
-            "嫖娼", "妓院", "青楼"
-        ]
-        for word in sensitive_words:
+            
+        words = sensitive_cfg.get('words', [])
+        for word in words:
             if word in text:
-                obfuscated = "-".join(list(word))
+                obfuscated = word[0] + '*' * (len(word) - 1)
                 text = text.replace(word, obfuscated)
         return text
 
@@ -367,7 +214,7 @@ class TranslationPipeline:
             else:
                 final_parts.append(f"\n[... Đang chờ dịch phân đoạn {i+1}/{total} ...]\n")
         
-        final_text = '\n\n'.join(final_parts)
+        final_text  = '\n\n'.join(final_parts)
         lang_suffix = f"_{self.target_lang}"
         output_path = self.output_dir / f"{input_path.stem}{lang_suffix}{input_path.suffix}"
         await self._write_text_file(output_path, final_text)
@@ -380,113 +227,9 @@ class TranslationPipeline:
         else:
             return await coro_func(*args, **kwargs)
 
-    async def _call_genai(self, system: str, user: str, temperature: float = None) -> str:
-        temp = temperature if temperature is not None else self.model_opts['temperature']
-        top_p = self.model_opts['top_p']
-        
-        use_async = self.settings['features'].get('use_async_client', True)
-
-        self.logger.debug("==================== API CALL START ====================")
-        self.logger.debug(f"Model: {self.model} | Temperature: {temp} | Top_P: {top_p}")
-        self.logger.debug(f"System Instruction:\n{system}")
-        if isinstance(user, list):
-            self.logger.debug("User Contents (Multi-turn):")
-            for item in user:
-                role = item.get("role", "unknown")
-                text = ""
-                if "parts" in item and item["parts"]:
-                    text = item["parts"][0].get("text", "")
-                self.logger.debug(f"  [{role}]: {text}")
-        else:
-            self.logger.debug(f"User Content:\n{user}")
-
-        safety_settings = [
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold=types.HarmBlockThreshold.BLOCK_NONE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold=types.HarmBlockThreshold.BLOCK_NONE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold=types.HarmBlockThreshold.BLOCK_NONE,
-            ),
-            types.SafetySetting(
-                category=types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold=types.HarmBlockThreshold.BLOCK_NONE,
-            ),
-        ]
-
-        actual_safety = safety_settings
-
-        t_start = time.time()
-        try:
-            if use_async:
-                response = await self.client.aio.models.generate_content(
-                    model=self.model,
-                    contents=user,
-                    config=GenerateContentConfig(
-                        system_instruction=system,
-                        temperature=temp,
-                        top_p=top_p,
-                        safety_settings=actual_safety,
-                    )
-                )
-            else:
-                # Wrap synchronous generate_content in run_in_executor
-                response = await asyncio.get_event_loop().run_in_executor(
-                    self.executor,
-                    self.client.models.generate_content,
-                    self.model,
-                    user,
-                    GenerateContentConfig(
-                        system_instruction=system,
-                        temperature=temp,
-                        top_p=top_p,
-                        safety_settings=actual_safety,
-                    )
-                )
-            latency = time.time() - t_start
-            self.logger.debug(f"API Call finished in {latency:.2f}s")
-        except APIError as e:
-            self.logger.error(f"Gemini API Error: {e} | Code: {getattr(e, 'code', None)}")
-            raise GeminiAPIError(f"Gemini API Error: {e}", status_code=getattr(e, 'code', None))
-        except Exception as e:
-            err_msg = str(e).lower()
-            self.logger.error(f"Unexpected API Exception: {e}")
-            if "timeout" in err_msg or "time out" in err_msg or "deadline" in err_msg:
-                raise GeminiAPIError(f"Timeout: {e}", status_code=408)
-            raise GeminiAPIError(f"Connection/Unexpected Error: {e}")
-
-        raw = response.text or ""
-        self.logger.debug(f"Raw response output:\n{raw}")
-
-        # Strip thinking tags (if any)
-        if self.settings['features'].get('clean_thinking_tags', True):
-            raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL)
-            raw = re.sub(r'<\|.*?\|>',         '', raw, flags=re.DOTALL)
-
-        # Check finish reason
-        finish_reason = None
-        if response.candidates:
-            candidate = response.candidates[0]
-            if hasattr(candidate, 'finish_reason') and candidate.finish_reason:
-                finish_reason = str(candidate.finish_reason).upper()
-            
-            # Log safety ratings if blocked
-            if hasattr(candidate, 'safety_ratings') and candidate.safety_ratings:
-                self.logger.debug(f"Safety Ratings: {[str(r) for r in candidate.safety_ratings]}")
-
-        self.logger.debug(f"Finish Reason: {finish_reason}")
-        self.logger.debug("==================== API CALL END ====================")
-
-        if finish_reason in ("MAX_TOKENS", "LENGTH"):
-            raise TruncatedResponseError("Response was truncated because it reached the token limit.")
-
-        return raw.strip()
-
+    # ------------------------------------------------------------------
+    # Translation core functions
+    # ------------------------------------------------------------------
     def _build_multi_turn_contents(
         self,
         chunk: str,
@@ -499,14 +242,23 @@ class TranslationPipeline:
         translated_chunks: dict[int, str],
         cpt: float,
     ) -> list[dict]:
-        system_prompt = self._build_system_prompt(source_lang, glossary_str, characters_str)
+        system_prompt = build_system_prompt(
+            self.prompts,
+            self.genres_cfg,
+            self.genre,
+            self.target_lang,
+            source_lang,
+            self.settings['features'].get('summary_history', False),
+            glossary_str,
+            characters_str
+        )
         system_tokens = estimate_tokens(system_prompt, cpt)
 
         inject_in_system = self.settings['features'].get('inject_glossary_in_system_prompt', True)
         if inject_in_system:
-            current_user_msg = self._build_user_message(chunk, context_snippet, "", "")
+            current_user_msg = build_user_message(self.prompts, chunk, context_snippet, "", "")
         else:
-            current_user_msg = self._build_user_message(chunk, context_snippet, glossary_str, characters_str)
+            current_user_msg = build_user_message(self.prompts, chunk, context_snippet, glossary_str, characters_str)
 
         current_tokens = estimate_tokens(current_user_msg, cpt)
 
@@ -557,10 +309,19 @@ class TranslationPipeline:
         temperature: float = None,
     ) -> str:
         inject_in_system = self.settings['features'].get('inject_glossary_in_system_prompt', True)
-        if inject_in_system:
-            system = self._build_system_prompt(source_lang, glossary_str, characters_str)
-        else:
-            system = self._build_system_prompt(source_lang)
+        
+        sys_glossary = glossary_str if inject_in_system else ""
+        sys_chars = characters_str if inject_in_system else ""
+        system = build_system_prompt(
+            self.prompts,
+            self.genres_cfg,
+            self.genre,
+            self.target_lang,
+            source_lang,
+            self.settings['features'].get('summary_history', False),
+            sys_glossary,
+            sys_chars
+        )
 
         if retry_instruction:
             system += f"\n\n[LƯU Ý QUAN TRỌNG - THỬ LẠI]\n{retry_instruction}"
@@ -572,11 +333,16 @@ class TranslationPipeline:
                 user = copy.deepcopy(contents)
                 user[-1]["parts"][0]["text"] += f"\n\n[LƯU Ý QUAN TRỌNG - THỬ LẠI]\n{retry_instruction}"
         else:
-            if inject_in_system:
-                user   = self._build_user_message(chunk, summary, "", "")
-            else:
-                user   = self._build_user_message(chunk, summary, glossary_str, characters_str)
-        return await self._call_genai(system, user, temperature=temperature)
+            user_glossary = "" if inject_in_system else glossary_str
+            user_chars = "" if inject_in_system else characters_str
+            user = build_user_message(
+                self.prompts,
+                chunk,
+                summary,
+                user_glossary,
+                user_chars
+            )
+        return await self.api_client.call_genai(system, user, self.logger, temperature=temperature)
 
     async def _sleep_with_backoff(self, retry_count: int):
         delay = self.initial_delay * (self.exponential_base ** (retry_count - 1))
@@ -620,7 +386,7 @@ class TranslationPipeline:
         contents: list = None,
         chunks: list[str] = None,
         translated_chunks: dict[int, str] = None,
-    ) -> str:
+    ) -> tuple[str, str]:
         parts = self._split_chunk_in_half(chunk, source_lang)
         
         inject_in_system = self.settings['features'].get('inject_glossary_in_system_prompt', True)
@@ -629,7 +395,7 @@ class TranslationPipeline:
         if contents:
             import copy
             contents_1 = copy.deepcopy(contents)
-            user_msg_1 = self._build_user_message(parts[0], context_snippet, "", "") if inject_in_system else self._build_user_message(parts[0], context_snippet, glossary_str, characters_str)
+            user_msg_1 = build_user_message(self.prompts, parts[0], context_snippet, "", "") if inject_in_system else build_user_message(self.prompts, parts[0], context_snippet, glossary_str, characters_str)
             contents_1[-1]["parts"][0]["text"] = user_msg_1
 
         # Translate part 1
@@ -644,7 +410,7 @@ class TranslationPipeline:
         if contents:
             import copy
             contents_2 = copy.deepcopy(contents)
-            user_msg_2 = self._build_user_message(parts[1], context_snippet_2, "", "") if inject_in_system else self._build_user_message(parts[1], context_snippet_2, glossary_str, characters_str)
+            user_msg_2 = build_user_message(self.prompts, parts[1], context_snippet_2, "", "") if inject_in_system else build_user_message(self.prompts, parts[1], context_snippet_2, glossary_str, characters_str)
             contents_2[-1]["parts"][0]["text"] = user_msg_2
         
         # Translate part 2
@@ -736,15 +502,15 @@ class TranslationPipeline:
                     if not (has_gl_start and has_gl_end):
                         raise InvalidFormatError("Response format is invalid (missing <glossary> tags).")
 
-                parsed_translation = self._parse_xml_output_only(raw_response)
-                parsed_summary = self._parse_summary_output(raw_response) if self.settings['features'].get('summary_history', False) else ""
+                parsed_translation = parse_xml_output_only(raw_response)
+                parsed_summary = parse_summary_output(raw_response) if self.settings['features'].get('summary_history', False) else ""
                 
                 if hasattr(self, 'chunks_metadata') and chunk_idx in self.chunks_metadata:
                     self.chunks_metadata[chunk_idx]["error"] = None
 
                 # Extract glossary and update
                 if auto_glossary_enabled:
-                    glossary_data = self._parse_glossary_output(raw_response)
+                    glossary_data = parse_glossary_output(raw_response)
                     if glossary_data:
                         terms_added = await self._update_glossary_terms_async(glossary_data.get('terms', {}))
                         chars_added = await self._update_glossary_characters_async(glossary_data.get('characters', {}))
@@ -760,7 +526,6 @@ class TranslationPipeline:
                 # Editing and Proofreading
                 editing_enabled = self.settings['features'].get('editing_and_proofreading', True)
                 if editing_enabled and parsed_translation:
-                    # print(f"      ⏳ Chunk {chunk_idx+1:03d}/{total_chunks_str} - Step 2/2: Editing & proofreading ...")
                     self.logger.info(f"Chunk {chunk_idx+1}/{total_chunks_str} - Step 2/2: Starting editing and proofreading")
                     parsed_translation = await self._proofread_chunk_with_retry(
                         current_chunk,
@@ -774,7 +539,6 @@ class TranslationPipeline:
 
                 # Similarity checks
                 if detect_dup and parsed_translation:
-                    # print(f"      ⏳ Chunk {chunk_idx+1:03d}/{total_chunks_str} - Verifying similarity & duplicate checks ...")
                     # 1. Lazy translation check (similarity between original chunk and translation)
                     if source_lang.lower() != self.target_lang.lower():
                         lazy_sim = calculate_tfidf_cosine_similarity(current_chunk, parsed_translation)
@@ -801,7 +565,6 @@ class TranslationPipeline:
                 
             except TruncatedResponseError as e:
                 # Length truncation! Split and translate
-                # print(f"      ⚠️  Chunk {chunk_idx+1:03d}/{total_chunks_str} truncated. Splitting into 2 smaller chunks...")
                 self.logger.warning(f"Chunk {chunk_idx+1}/{total_chunks_str} truncated. Splitting.")
                 if max_depth > 0:
                     return await self._split_and_translate_chunk(
@@ -835,7 +598,7 @@ class TranslationPipeline:
                 target_lang_label = get_source_lang_label(self.target_lang)
                 retry_instruction = f"LƯU Ý: Bản dịch vừa rồi quá giống văn bản gốc (chưa được dịch). Hãy dịch hoàn chỉnh sang {target_lang_label}, không sao chép lại văn bản gốc."
                 await self._sleep_with_backoff(retries)
- 
+  
             except DuplicateTranslationError as e:
                 if hasattr(self, 'chunks_metadata') and chunk_idx in self.chunks_metadata:
                     self.chunks_metadata[chunk_idx]["error"] = str(e)
@@ -847,7 +610,7 @@ class TranslationPipeline:
                 self.logger.warning(f"Chunk {chunk_idx+1}/{total_chunks_str} - Duplicate translation: {e}. Retrying ({retries}/{self.max_retries})")
                 retry_instruction = "LƯU Ý: Bản dịch vừa rồi bị lặp lại hoặc quá giống phân đoạn trước. Vui lòng dịch đúng nội dung mới của phân đoạn này, không lặp lại câu chữ cũ."
                 await self._sleep_with_backoff(retries)
- 
+  
             except GeminiAPIError as e:
                 if hasattr(self, 'chunks_metadata') and chunk_idx in self.chunks_metadata:
                     self.chunks_metadata[chunk_idx]["error"] = str(e)
@@ -867,13 +630,9 @@ class TranslationPipeline:
 
     async def _pre_extract_glossary_and_characters(self, text: str, source_lang: str) -> dict:
         """Extract baseline glossary and characters from a text sample."""
-        # Use first 15000 characters as a representative sample
-        sample = text[:15000]
-        lang_labels = {'en': 'English', 'zh': 'Tiếng Trung (Chinese)',
-                       'ja': 'Tiếng Nhật (Japanese)', 'ko': 'Tiếng Hàn (Korean)'}
-        user = self.prompts['pre_extract_prompt'].replace('{source_lang}', lang_labels.get(source_lang, source_lang)).replace('{text}', sample)
+        user = build_pre_extract_prompt(self.prompts, text, source_lang)
         try:
-            raw = await self._call_genai("", user, temperature=0.1)
+            raw = await self.api_client.call_genai("", user, self.logger, temperature=0.1)
             # Strip markdown code blocks if any
             clean_content = re.sub(r'```(?:json)?\s*(.*?)\s*```', r'\1', raw, flags=re.DOTALL)
             match = re.search(r'\{.*\}', clean_content, re.DOTALL)
@@ -882,42 +641,6 @@ class TranslationPipeline:
         except Exception as e:
             self.console.print(f"      [bold red]⚠️  Pre-extraction failed:[/bold red] {e}")
         return {}
-
-    def _parse_xml_output_only(self, response_text: str) -> str:
-        """Parses only the <translation> tag from the response."""
-        translation_match = re.search(r'<translation>(.*?)</translation>', response_text, re.DOTALL | re.IGNORECASE)
-        if translation_match:
-            return translation_match.group(1).strip()
-        # Fallback: remove XML tags if any, otherwise return raw
-        return re.sub(r'<.*?>', '', response_text, flags=re.DOTALL).strip()
-
-    def _parse_summary_output(self, raw_response: str) -> str:
-        """Parse <summary> block."""
-        match = re.search(r'<summary>(.*?)</summary>', raw_response, re.DOTALL | re.IGNORECASE)
-        return match.group(1).strip() if match else ""
-
-    def _parse_glossary_output(self, response_text: str) -> dict:
-        """Parses the <glossary> tag from the response and returns dict."""
-        glossary_match = re.search(r'<glossary>(.*?)</glossary>', response_text, re.DOTALL | re.IGNORECASE)
-        if glossary_match:
-            content = glossary_match.group(1).strip()
-            # Strip markdown code blocks if any
-            clean_content = re.sub(r'```(?:json)?\s*(.*?)\s*```', r'\1', content, flags=re.DOTALL)
-            match = re.search(r'\{.*\}', clean_content, re.DOTALL)
-            if match:
-                try:
-                    return json.loads(match.group())
-                except Exception as e:
-                    print(f"      ⚠️  Failed to parse glossary JSON from response: {e}")
-        return {}
-
-    def _parse_proofread_output_only(self, response_text: str) -> str:
-        """Parses only the <proofread> tag from the response."""
-        proofread_match = re.search(r'<proofread>(.*?)</proofread>', response_text, re.DOTALL | re.IGNORECASE)
-        if proofread_match:
-            return proofread_match.group(1).strip()
-        # Fallback: remove XML tags if any, otherwise return raw
-        return re.sub(r'<.*?>', '', response_text, flags=re.DOTALL).strip()
 
     async def _proofread_chunk(
         self,
@@ -928,22 +651,14 @@ class TranslationPipeline:
         source_lang: str,
         temperature: float = None,
     ) -> str:
-        system = self.prompts['proofread_base'].strip()
-        
-        # Build glossary/characters sections if present
-        g_sec = ""
-        if glossary_str:
-            g_sec = self.prompts['glossary_section'].replace('{terms}', glossary_str).rstrip()
-        c_sec = ""
-        if characters_str:
-            c_sec = self.prompts['characters_section'].replace('{characters}', characters_str).rstrip()
-
-        user = self.prompts['proofread_user'].replace('{source_text}', source_chunk)\
-                                              .replace('{raw_translation}', raw_translation)\
-                                              .replace('{glossary_section}', g_sec)\
-                                              .replace('{characters_section}', c_sec)\
-                                              .strip()
-        return await self._call_genai(system, user, temperature=temperature)
+        system, user = build_proofread_prompt(
+            self.prompts,
+            source_chunk,
+            raw_translation,
+            glossary_str,
+            characters_str
+        )
+        return await self.api_client.call_genai(system, user, self.logger, temperature=temperature)
 
     async def _proofread_chunk_with_retry(
         self,
@@ -986,7 +701,7 @@ class TranslationPipeline:
                 if not (has_start and has_end):
                     raise InvalidFormatError("Proofread response format is invalid (missing <proofread> tags).")
                     
-                parsed_proofread = self._parse_proofread_output_only(raw_response)
+                parsed_proofread = parse_proofread_output_only(raw_response)
                 self.logger.info(f"Chunk {chunk_idx+1}/{total_chunks_str} - Step 2/2: Proofreading success")
                 return parsed_proofread
                 
@@ -1012,6 +727,9 @@ class TranslationPipeline:
                 self.logger.warning(f"Chunk {chunk_idx+1}/{total_chunks_str} - Proofread API error (status: {e.status_code}): {e}. Retrying ({retries}/{self.max_retries})")
                 await self._sleep_with_backoff(retries)
 
+    # ------------------------------------------------------------------
+    # Asynchronous File I/O helpers
+    # ------------------------------------------------------------------
     async def _write_text_file(self, path: Path, text: str):
         """Write text to file in a non-blocking way using the executor."""
         await asyncio.get_event_loop().run_in_executor(
@@ -1052,6 +770,8 @@ class TranslationPipeline:
             chars
         )
 
+    # ------------------------------------------------------------------
+    # Core: translate one file
     # ------------------------------------------------------------------
     async def translate_file(self, input_path: Path, resume: bool = False, target_chunks: Optional[list[int]] = None) -> Path:
         # Set the context variable so logger logs to the correct file
@@ -1321,11 +1041,22 @@ class TranslationPipeline:
                     
                     failed_indices = list(failed_chunks.keys())
                     for idx in failed_indices:
-                        # print(f"      🔄 Retrying Chunk {idx+1:03d}/{total}...")
                         try:
                             t_start = time.time()
                             chunk = chunks[idx]
-                            if idx > 0:
+
+                            if use_summary_history and idx > 0:
+                                max_h = self.settings['translation'].get('history_chapters', 2)
+                                h_sums = [summarized_chunks[p] for p in range(max(0, idx - max_h), idx) if p in summarized_chunks]
+                                summary_text = "\n".join(h_sums) if h_sums else "(Chưa có tóm tắt)"
+                                
+                                last_trans = translated_chunks.get(idx - 1, "")
+                                style_snippet = last_trans[-500:] if last_trans else ""
+                                
+                                context_snippet = f"TÓM TẮT CỐT TRUYỆN:\n{summary_text}"
+                                if style_snippet:
+                                    context_snippet += f"\n\nĐOẠN DỊCH TRƯỚC ĐÓ (để tham khảo giọng văn):\n...{style_snippet}"
+                            elif idx > 0:
                                 prev_chunk = chunks[idx - 1]
                                 context_snippet = prev_chunk[-1000:]
                             else:
@@ -1333,9 +1064,6 @@ class TranslationPipeline:
 
                             g_str = self.glossary_mgr.format_terms_for_prompt(chunk if filter_relevant else None)
                             c_str = self.glossary_mgr.format_characters_for_prompt(chunk if filter_relevant else None)
-
-                            # Slightly increase temperature for each retry pass to bypass recitation/safety blocks
-                            temp = min(1.0, base_temp + 0.15 * re_pass)
 
                             contents = None
                             if use_rolling_history:
@@ -1361,7 +1089,6 @@ class TranslationPipeline:
                                 contents=contents,
                                 chunks=chunks,
                                 translated_chunks=translated_chunks,
-                                temperature=temp,
                             )
                             
                             translated_chunks[idx] = translation
@@ -1387,8 +1114,8 @@ class TranslationPipeline:
                             self.logger.info(f"Chunk {idx+1:03d}/{total} successfully re-translated in {elapsed:.1f}s")
                         except Exception as e:
                             print(f"      ❌ Chunk {idx+1:03d}/{total} still failed on pass {re_pass}: {e}")
-                            self.logger.error(f"Chunk {idx+1:03d}/{total} still failed on pass {re_pass}: {e}")
-                            
+                            self.logger.error(f"Chunk {idx+1:03d}/{total} failed on pass {re_pass}: {e}")
+
                     re_pass += 1
 
         # ── Assemble & save output ───────────────────────────────────
@@ -1403,11 +1130,10 @@ class TranslationPipeline:
         final_text  = '\n\n'.join(final_parts)
         lang_suffix = f"_{self.target_lang}"
         output_path = self.output_dir / f"{input_path.stem}{lang_suffix}{input_path.suffix}"
-        self.logger.info(f"Assembling file: {output_path.name}")
+        
         await self._write_text_file(output_path, final_text)
-        self.logger.info(f"Saved file: {output_path.name}")
 
-        # Glossary report
+        # Save glossary report
         report_path = self.output_dir / f"{self.project}_glossary_report.md"
         await self._write_text_file(report_path, self.glossary_mgr.export_report())
 
@@ -1461,7 +1187,7 @@ class TranslationPipeline:
     # ------------------------------------------------------------------
     # Entry point
     # ------------------------------------------------------------------
-    async def run(self, input_path_str: str, resume: bool = False) -> None:
+    async def run(self, input_path_str: str, resume: bool = False, target_chunks: Optional[list[int]] = None) -> None:
         input_path = Path(input_path_str)
         supported  = {'.txt', '.md'}
 
@@ -1469,9 +1195,12 @@ class TranslationPipeline:
             if input_path.suffix.lower() not in supported:
                 self.console.print(f"[bold red]⚠️  Unsupported file type: {input_path.suffix}")
                 return
-            await self.translate_file(input_path, resume=resume)
+            await self.translate_file(input_path, resume=resume, target_chunks=target_chunks)
 
         elif input_path.is_dir():
+            if target_chunks is not None:
+                self.console.print("[bold red]⚠️  --target-chunks / --fix-errors can only be used with a single input file, not a directory.[/bold red]")
+                return
             files = []
             for ext in ['.txt', '.md']:
                 files.extend(sorted(input_path.glob(f'*{ext}')))

@@ -300,6 +300,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { api } from '@/api/api'
 
 const settings = ref(null)
 const activeTab = ref('model')
@@ -314,10 +315,7 @@ const tabs = [
 
 async function loadSettings() {
   try {
-    const res = await fetch('/api/settings')
-    if (res.ok) {
-      settings.value = await res.json()
-    }
+    settings.value = await api.getSettings()
   } catch (err) {
     console.error('Failed to load settings:', err)
   }
@@ -325,19 +323,11 @@ async function loadSettings() {
 
 async function saveSettings() {
   try {
-    const res = await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(settings.value),
-    })
-    if (res.ok) {
-      alert('Đã lưu thiết lập thành công!')
-    } else {
-      alert('Không thể lưu thiết lập!')
-    }
+    await api.saveSettings(settings.value)
+    alert('Đã lưu thiết lập thành công!')
   } catch (err) {
     console.error('Failed to save settings:', err)
-    alert('Lỗi kết nối khi lưu thiết lập!')
+    alert(err.message || 'Lỗi kết nối khi lưu thiết lập!')
   }
 }
 

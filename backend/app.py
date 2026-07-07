@@ -1,4 +1,5 @@
 import os
+import time
 import sys
 import yaml
 import json
@@ -6,7 +7,7 @@ import logging
 import re
 from pathlib import Path
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
@@ -59,6 +60,7 @@ import builtins
 original_print = builtins.print
 
 def safe_print(*args, **kwargs):
+    skip_stdout = kwargs.pop("skip_stdout", False)
     message = " ".join(str(a) for a in args)
     
     project = current_project_var.get()
@@ -71,10 +73,25 @@ def safe_print(*args, **kwargs):
                 "step": "Initializing",
                 "logs": [],
                 "error": None,
-                "output_file": None
+                "output_file": None,
+                "start_time": time.time(),
+                "elapsed_time": 0,
+                "target_chunks": None,
+                "try_count": 1
             }
             
         status = project_status[project]
+        
+        # If the project status is failed (cancelled), ignore prints from the orphaned pipeline thread
+        if status.get("status") == "failed":
+            if skip_stdout:
+                return
+            try:
+                original_print(*args, **kwargs)
+            except Exception:
+                pass
+            return
+
         status["logs"].append(message)
         if len(status["logs"]) > 200:
             status["logs"] = status["logs"][-200:]
@@ -87,19 +104,28 @@ def safe_print(*args, **kwargs):
                 status["total_chunks"] = int(progress_match.group(2))
                 
         # Step description
-        step_match = re.search(r"Step\s+\d+/\d+:\s*([^-.\n]+)", message)
-        if step_match:
-            status["step"] = step_match.group(1).strip()
-        elif "Verifying similarity" in message:
-            status["step"] = "Verifying similarity"
-        elif "Splitting into 2 smaller chunks" in message:
-            status["step"] = "Splitting chunk"
-        elif "completed" in message:
-            status["step"] = "Completed chunk"
-        elif "Done" in message:
-            status["step"] = "Translation finished"
-        elif "Resuming progress" in message:
-            status["step"] = "Resuming from checkpoint"
+        if "Translating" in message or "dịch" in message.lower():
+            try_match = re.search(r"Try\s+(\d+)", message)
+            try_val = int(try_match.group(1)) if try_match else 1
+            status["step"] = f"Đang dịch (lượt thử {try_val})"
+            status["try_count"] = try_val
+        else:
+            step_match = re.search(r"Step\s+\d+/\d+:\s*([^-.\n]+)", message)
+            if step_match:
+                status["step"] = step_match.group(1).strip()
+            elif "Verifying similarity" in message:
+                status["step"] = "Verifying similarity"
+            elif "Splitting into 2 smaller chunks" in message:
+                status["step"] = "Splitting chunk"
+            elif "completed" in message:
+                status["step"] = "Completed chunk"
+            elif "Done" in message:
+                status["step"] = "Translation finished"
+            elif "Resuming progress" in message:
+                status["step"] = "Resuming from checkpoint"
+
+    if skip_stdout:
+        return
 
     try:
         original_print(*args, **kwargs)
@@ -324,7 +350,11 @@ async def run_translation_task(
         "step": "Starting pipeline...",
         "logs": [],
         "error": None,
-        "output_file": None
+        "output_file": None,
+        "start_time": time.time(),
+        "elapsed_time": 0,
+        "target_chunks": None,
+        "try_count": 1
     }
     
     try:
@@ -340,12 +370,14 @@ async def run_translation_task(
         project_status[project]["status"] = "completed"
         project_status[project]["output_file"] = output_path.name
         project_status[project]["step"] = "Completed"
+        project_status[project]["end_time"] = time.time()
     except Exception as e:
         import traceback
         traceback.print_exc()
         project_status[project]["status"] = "failed"
         project_status[project]["error"] = str(e)
         project_status[project]["step"] = "Failed"
+        project_status[project]["end_time"] = time.time()
 
 
 @app.get("/api/projects/{project}/novels")
@@ -418,9 +450,11 @@ def get_chunks(project: str, novel: str, page: int = 1, limit: int = 50):
     
     translated = {}
     failed = {}
+    chunks_metadata = {}
     if checkpoint:
         translated = checkpoint.get("translated_chunks", {})
         failed = checkpoint.get("failed_chunks", {})
+        chunks_metadata = checkpoint.get("chunks_metadata", {})
         
     total = len(chunks)
     start_idx = (page - 1) * limit
@@ -441,7 +475,8 @@ def get_chunks(project: str, novel: str, page: int = 1, limit: int = 50):
             "id": i,
             "original": chunks[i],
             "translated": trans_text,
-            "status": status
+            "status": status,
+            "meta": chunks_metadata.get(str(i), None)
         })
         
     return {
@@ -485,7 +520,11 @@ async def translate_chunks(
             "step": "Starting pipeline...",
             "logs": [],
             "error": None,
-            "output_file": None
+            "output_file": None,
+            "start_time": time.time(),
+            "elapsed_time": 0,
+            "target_chunks": req.target_chunks,
+            "try_count": 1
         }
         try:
             pipeline = TranslationPipeline(
@@ -499,12 +538,14 @@ async def translate_chunks(
             project_status[project]["status"] = "completed"
             project_status[project]["output_file"] = output_path.name
             project_status[project]["step"] = "Completed"
+            project_status[project]["end_time"] = time.time()
         except Exception as e:
             import traceback
             traceback.print_exc()
             project_status[project]["status"] = "failed"
             project_status[project]["error"] = str(e)
             project_status[project]["step"] = "Failed"
+            project_status[project]["end_time"] = time.time()
 
     task = asyncio.create_task(custom_task())
     project_tasks[project] = task
@@ -606,7 +647,9 @@ def get_status(project: str):
                     "step": "Stopped (Checkpoint available)",
                     "logs": ["Checkpoint found. You can resume this project."],
                     "error": None,
-                    "output_file": None
+                    "output_file": None,
+                    "target_chunks": None,
+                    "try_count": 1
                 }
         
         return {
@@ -616,10 +659,32 @@ def get_status(project: str):
             "step": "Idle",
             "logs": [],
             "error": None,
-            "output_file": None
+            "output_file": None,
+            "elapsed_time": 0,
+            "target_chunks": None,
+            "try_count": 1
         }
         
-    return project_status[project]
+    status_data = dict(project_status[project])
+    if status_data.get("status") == "translating":
+        status_data["elapsed_time"] = round(time.time() - status_data.get("start_time", time.time()), 1)
+    elif "start_time" in status_data and "end_time" in status_data:
+        status_data["elapsed_time"] = round(status_data["end_time"] - status_data["start_time"], 1)
+    return status_data
+
+@app.head("/api/projects/{project}/download/{filename}")
+def check_file_exists(project: str, filename: str):
+    validate_project_name(project)
+    if not re.match(r"^[a-zA-Z0-9_.-]+$", filename):
+        raise HTTPException(status_code=400, detail="Tên tệp không hợp lệ")
+    output_dir = BASE_DIR / "output"
+    file_path = output_dir / filename
+    if not file_path.exists():
+        if filename == f"{project}_glossary_report.md":
+            pass
+        else:
+            raise HTTPException(status_code=404, detail="File not found")
+    return Response(status_code=200)
 
 @app.get("/api/projects/{project}/download/{filename}")
 def download_file(project: str, filename: str):
@@ -648,15 +713,8 @@ def download_file(project: str, filename: str):
             
     return FileResponse(file_path, filename=filename, media_type="application/octet-stream")
 
-# Serve frontend static files
-# Place frontend static files at frontend/
-frontend_dir = BASE_DIR.parent / "frontend" / "dist"
-if frontend_dir.exists():
-    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
-
-
 @app.post("/api/projects/{project}/cancel")
-def cancel_translation(project: str):
+async def cancel_translation(project: str):
     validate_project_name(project)
     if project in project_tasks:
         project_tasks[project].cancel()
@@ -664,5 +722,13 @@ def cancel_translation(project: str):
             project_status[project]["status"] = "failed"
             project_status[project]["step"] = "Đã hủy"
             project_status[project]["error"] = "User cancelled"
+            project_status[project]["end_time"] = time.time()
         return {"message": "Cancelled"}
     return {"message": "No active task"}
+
+
+# Serve frontend static files
+# Place frontend static files at frontend/
+frontend_dir = BASE_DIR.parent / "frontend" / "dist"
+if frontend_dir.exists():
+    app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")

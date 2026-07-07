@@ -1,12 +1,12 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 
-import Landing from '../views/Landing.vue'
-import Dashboard from '../views/Dashboard.vue'
-import Projects from '../views/Projects.vue'
-import Settings from '../views/Settings.vue'
-import ProjectDetail from '../views/ProjectDetail.vue'
-import NovelChunks from '../views/NovelChunks.vue'
-import Glossary from '../views/Glossary.vue'
+import Landing from '@/views/Landing.vue'
+import Dashboard from '@/views/Dashboard.vue'
+import Projects from '@/views/Projects.vue'
+import Settings from '@/views/Settings.vue'
+import ProjectDetail from '@/views/ProjectDetail.vue'
+import NovelChunks from '@/views/NovelChunks.vue'
+import Glossary from '@/views/Glossary.vue'
 
 const routes = [
   {

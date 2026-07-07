@@ -151,6 +151,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { api } from '@/api/api'
 
 const route = useRoute()
 const project = computed(() => route.params.project)
@@ -165,29 +166,26 @@ const newChar = ref({ name: '', info: '' })
 async function loadGlossary() {
   if (!project.value) return
   try {
-    const res = await fetch(`/api/projects/${project.value}/glossary`)
-    if (res.ok) {
-      const data = await res.json()
-      
-      // Convert dict of terms {"term": "translation"} to array of objects
-      if (data.terms) {
-        termsList.value = Object.entries(data.terms).map(([term, translation]) => ({
-          term,
-          translation
-        }))
-      } else {
-        termsList.value = []
-      }
+    const data = await api.getGlossary(project.value)
+    
+    // Convert dict of terms {"term": "translation"} to array of objects
+    if (data.terms) {
+      termsList.value = Object.entries(data.terms).map(([term, translation]) => ({
+        term,
+        translation
+      }))
+    } else {
+      termsList.value = []
+    }
 
-      // Convert dict of characters {"name": "info"} to array of objects
-      if (data.characters) {
-        charactersList.value = Object.entries(data.characters).map(([name, info]) => ({
-          name,
-          info
-        }))
-      } else {
-        charactersList.value = []
-      }
+    // Convert dict of characters {"name": "info"} to array of objects
+    if (data.characters) {
+      charactersList.value = Object.entries(data.characters).map(([name, info]) => ({
+        name,
+        info
+      }))
+    } else {
+      charactersList.value = []
     }
   } catch (err) {
     console.error('Failed to load glossary:', err)
@@ -200,15 +198,9 @@ async function addTerm() {
   if (!term || !translation) return
 
   try {
-    const res = await fetch(`/api/projects/${project.value}/glossary/term`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ term, translation })
-    })
-    if (res.ok) {
-      newTerm.value = { term: '', translation: '' }
-      await loadGlossary()
-    }
+    await api.addTerm(project.value, term, translation)
+    newTerm.value = { term: '', translation: '' }
+    await loadGlossary()
   } catch (err) {
     console.error('Failed to add term:', err)
   }
@@ -217,12 +209,8 @@ async function addTerm() {
 async function deleteTerm(term) {
   if (!confirm(`Xóa thuật ngữ "${term}"?`)) return
   try {
-    const res = await fetch(`/api/projects/${project.value}/glossary/term/${encodeURIComponent(term)}`, {
-      method: 'DELETE'
-    })
-    if (res.ok) {
-      await loadGlossary()
-    }
+    await api.deleteTerm(project.value, term)
+    await loadGlossary()
   } catch (err) {
     console.error('Failed to delete term:', err)
   }
@@ -234,15 +222,9 @@ async function addCharacter() {
   if (!name || !info) return
 
   try {
-    const res = await fetch(`/api/projects/${project.value}/glossary/character`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, info })
-    })
-    if (res.ok) {
-      newChar.value = { name: '', info: '' }
-      await loadGlossary()
-    }
+    await api.addCharacter(project.value, name, info)
+    newChar.value = { name: '', info: '' }
+    await loadGlossary()
   } catch (err) {
     console.error('Failed to add character:', err)
   }
@@ -251,12 +233,8 @@ async function addCharacter() {
 async function deleteCharacter(name) {
   if (!confirm(`Xóa nhân vật "${name}"?`)) return
   try {
-    const res = await fetch(`/api/projects/${project.value}/glossary/character/${encodeURIComponent(name)}`, {
-      method: 'DELETE'
-    })
-    if (res.ok) {
-      await loadGlossary()
-    }
+    await api.deleteCharacter(project.value, name)
+    await loadGlossary()
   } catch (err) {
     console.error('Failed to delete character:', err)
   }
@@ -264,12 +242,12 @@ async function deleteCharacter(name) {
 
 function splitInfo(info) {
   if (!info) return []
-  return info.split('|').map(p => p.trim()).filter(Boolean)
+  return info.split('|').map(s => s.trim()).filter(Boolean)
 }
 
 watch(project, () => {
   loadGlossary()
-})
+}, { immediate: true })
 
 onMounted(() => {
   loadGlossary()
@@ -279,23 +257,24 @@ onMounted(() => {
 <style scoped>
 .subtitle {
   font-size: 18px;
-  color: var(--slate);
+  color: var(--color-slate);
   font-weight: 400;
-}
-
-.char-badge {
-  background: var(--mist);
-  color: var(--ink);
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  border: 1px solid var(--hairline);
 }
 
 .empty-state {
   text-align: center;
-  padding: 48px 32px;
-  color: var(--stone);
+  padding: 48px;
+  color: var(--color-stone);
   font-size: 14px;
+}
+
+.char-badge {
+  background: var(--color-mist);
+  color: var(--color-slate);
+  padding: 4px 10px;
+  border-radius: var(--radius-pills);
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--color-hairline);
 }
 </style>

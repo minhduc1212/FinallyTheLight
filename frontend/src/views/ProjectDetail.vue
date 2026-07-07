@@ -20,16 +20,39 @@
     </div>
 
     <!-- Translation Progress -->
-    <div v-if="status.status === 'translating'" class="card progress-card">
+    <div v-if="status.status === 'translating' || (status.status === 'failed' && hasCheckpoint)" class="card progress-card" style="margin-bottom: 24px;">
       <div class="progress-info">
-        <span>{{ status.step || 'Đang dịch...' }}</span>
+        <span style="font-weight: 600; color: var(--color-ink); display: flex; align-items: center; gap: 8px;">
+          {{ status.step || 'Đang dịch...' }}
+          <StatusBadge :status="status.status" type="project" />
+        </span>
         <span>Chunk {{ status.current_chunk }} / {{ status.total_chunks }}</span>
       </div>
       <div class="progress-bar-track">
         <div class="progress-bar-fill" :style="{ width: progressPct + '%' }"></div>
       </div>
-      <div style="text-align: right; font-size: 12px; color: var(--color-slate); margin-top: 6px;">
-        {{ progressPct }}%
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+        <span style="font-size: 12px; color: var(--color-slate); font-weight: 500;">
+          Thời gian chạy: {{ formatDuration(status.elapsed_time) }} ({{ progressPct }}%)
+        </span>
+        <div style="display: flex; gap: 8px;">
+          <button
+            v-if="status.status === 'translating'"
+            class="btn btn-danger"
+            style="padding: 4px 10px; font-size: 12px; height: 26px;"
+            @click="cancelTranslation"
+          >
+            Hủy dịch
+          </button>
+          <button
+            v-if="status.status === 'failed' && hasCheckpoint"
+            class="btn btn-filled"
+            style="padding: 4px 10px; font-size: 12px; height: 26px;"
+            @click="resumeTranslation"
+          >
+            Tiếp tục dịch
+          </button>
+        </div>
       </div>
     </div>
 
@@ -58,7 +81,7 @@
               <div class="actions-cell">
                 <button
                   class="btn btn-outline"
-                  @click="$router.push(`/dashboard/${project}/novels/${encodeURIComponent(name)}`)"
+                  @click="router.push(`/dashboard/${project}/novels/${encodeURIComponent(name)}`)"
                 >
                   Dịch
                 </button>
@@ -80,13 +103,23 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { api } from '@/api/api'
+import StatusBadge from '@/components/StatusBadge.vue'
 
 const route = useRoute()
 const router = useRouter()
 const project = computed(() => route.params.project)
 
 const novels = ref([])
-const status = ref({ status: 'idle', current_chunk: 0, total_chunks: 0, step: '', logs: [], error: null, output_file: null })
+const status = ref({
+  status: 'idle',
+  current_chunk: 0,
+  total_chunks: 0,
+  step: '',
+  logs: [],
+  error: null,
+  output_file: null
+})
 
 let pollInterval = null
 
@@ -95,12 +128,74 @@ const progressPct = computed(() => {
   return Math.round((status.value.current_chunk / status.value.total_chunks) * 100)
 })
 
+const checkpoints = ref([])
+
+async function loadCheckpoints() {
+  try {
+    checkpoints.value = await api.getCheckpoints(project.value)
+  } catch (e) {
+    console.error('Failed to load checkpoints:', e)
+  }
+}
+
+const hasCheckpoint = computed(() => {
+  return checkpoints.value.length > 0
+})
+
+async function cancelTranslation() {
+  try {
+    await api.cancelTranslation(project.value)
+    setTimeout(async () => {
+      await loadStatus()
+      await loadCheckpoints()
+    }, 1000)
+  } catch (e) {
+    console.error('Failed to cancel translation:', e)
+  }
+}
+
+async function resumeTranslation() {
+  await loadCheckpoints()
+  if (checkpoints.value.length === 0) return
+  
+  // Find the novel corresponding to the checkpoint stem
+  const stem = checkpoints.value[0].file_stem
+  const matchingNovel = novels.value.find(n => {
+    const dotIdx = n.lastIndexOf('.')
+    const nameWithoutExt = dotIdx !== -1 ? n.substring(0, dotIdx) : n
+    return nameWithoutExt === stem
+  })
+  
+  if (!matchingNovel) {
+    alert('Không tìm thấy file tiểu thuyết tương ứng cho tiến trình này!')
+    return
+  }
+  
+  try {
+    await api.translateChunks(project.value, matchingNovel, {
+      target_chunks: null,
+      genre: 'default',
+      source_lang: 'auto',
+      target_lang: 'vi',
+      resume: true // Keep true to resume from checkpoint!
+    })
+    await loadStatus()
+  } catch (e) {
+    console.error('Failed to resume translation:', e)
+  }
+}
+
+function formatDuration(seconds) {
+  if (!seconds) return '0s'
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.round(seconds % 60)
+  return `${mins}m ${secs}s`
+}
+
 async function loadNovels() {
   try {
-    const res = await fetch(`/api/projects/${project.value}/novels`)
-    if (res.ok) {
-      novels.value = await res.json()
-    }
+    novels.value = await api.getNovels(project.value)
   } catch (e) {
     console.error('Failed to load novels:', e)
   }
@@ -108,14 +203,11 @@ async function loadNovels() {
 
 async function loadStatus() {
   try {
-    const res = await fetch(`/api/projects/${project.value}/status`)
-    if (res.ok) {
-      status.value = await res.json()
-      if (status.value.status === 'translating') {
-        startPolling()
-      } else {
-        stopPolling()
-      }
+    status.value = await api.getProjectStatus(project.value)
+    if (status.value.status === 'translating') {
+      startPolling()
+    } else {
+      stopPolling()
     }
   } catch (e) {
     console.error('Failed to load status:', e)
@@ -126,12 +218,9 @@ function startPolling() {
   if (pollInterval) return
   pollInterval = setInterval(async () => {
     try {
-      const res = await fetch(`/api/projects/${project.value}/status`)
-      if (res.ok) {
-        status.value = await res.json()
-        if (status.value.status !== 'translating') {
-          stopPolling()
-        }
+      status.value = await api.getProjectStatus(project.value)
+      if (status.value.status !== 'translating') {
+        stopPolling()
       }
     } catch (e) {
       console.error('Polling failed:', e)
@@ -149,13 +238,8 @@ function stopPolling() {
 async function handleUpload(event) {
   const file = event.target.files[0]
   if (!file) return
-  const formData = new FormData()
-  formData.append('file', file)
   try {
-    await fetch(`/api/projects/${project.value}/novels`, {
-      method: 'POST',
-      body: formData
-    })
+    await api.uploadNovel(project.value, file)
     await loadNovels()
   } catch (e) {
     console.error('Upload failed:', e)
@@ -166,9 +250,7 @@ async function handleUpload(event) {
 async function deleteNovel(name) {
   if (!confirm(`Xóa tiểu thuyết "${name}"?`)) return
   try {
-    await fetch(`/api/projects/${project.value}/novels/${encodeURIComponent(name)}`, {
-      method: 'DELETE'
-    })
+    await api.deleteNovel(project.value, name)
     await loadNovels()
   } catch (e) {
     console.error('Delete failed:', e)
@@ -178,6 +260,7 @@ async function deleteNovel(name) {
 onMounted(() => {
   loadNovels()
   loadStatus()
+  loadCheckpoints()
 })
 
 onUnmounted(() => {

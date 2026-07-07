@@ -15,3 +15,7 @@
         Go to project you want -> see and change the glossary
         Go to project you want -> See translation progress bar for each novel in project 
         Show the log of the translation (can hide and show)
+
+# TODO
+    Remake Struct
+    Remake the Log

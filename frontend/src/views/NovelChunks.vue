@@ -2,7 +2,7 @@
   <div class="novel-chunks-page">
     <!-- Top Nav / Back Button -->
     <div style="display: flex; gap: 16px; margin-bottom: 24px; align-items: center;">
-      <button class="btn btn-outline" @click="$router.push(`/dashboard/${project}`)">
+      <button class="btn btn-outline" @click="router.push(`/dashboard/${project}`)">
         Quay lại
       </button>
       <h3 style="font-size: 20px; font-weight: 600; margin: 0;">
@@ -61,7 +61,7 @@
             class="btn btn-danger"
             @click="cancelTranslation"
           >
-            Tạm Dừng
+            Hủy dịch
           </button>
         </template>
         
@@ -104,11 +104,12 @@
       </div>
     </div>
 
-    <!-- Progress Card (visible when translating) -->
-    <div v-if="status.status === 'translating'" class="card progress-card" style="margin-bottom: 24px;">
+    <!-- Progress Card (visible when translating, completed or failed) -->
+    <div v-if="status.status === 'translating' || status.status === 'completed' || status.status === 'failed'" class="card progress-card" style="margin-bottom: 24px;">
       <div class="progress-info">
-        <span style="font-weight: 600; color: var(--ink);">
+        <span style="font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 8px;">
           {{ status.step || 'Đang biên dịch...' }}
+          <StatusBadge :status="status.status" type="project" />
         </span>
         <span style="font-weight: 600; color: var(--slate);">
           Phân đoạn {{ status.current_chunk }} / {{ status.total_chunks }}
@@ -117,24 +118,44 @@
       <div class="progress-bar-track">
         <div class="progress-bar-fill" :style="{ width: progressPct + '%' }"></div>
       </div>
-      <div style="text-align: right; font-size: 12px; color: var(--slate); margin-top: 6px; font-weight: 500;">
-        {{ progressPct }}% hoàn thành
+      <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--slate); margin-top: 6px; font-weight: 500;">
+        <span>Thời gian chạy: {{ formatDuration(status.elapsed_time) }}</span>
+        <span>{{ progressPct }}% hoàn thành</span>
+      </div>
+      
+      <!-- Target chunks indicator if only translating selected chunks -->
+      <div v-if="status.target_chunks && status.target_chunks.length > 0" style="font-size: 12px; color: var(--color-slate); margin-top: 8px; padding-top: 8px; border-top: 1px dotted var(--color-hairline);">
+        <span style="font-weight: 600; color: var(--ink);">Mục tiêu dịch:</span> 
+        Các phân đoạn {{ status.target_chunks.map(i => '#' + (i + 1)).join(', ') }}
+      </div>
+
+      <!-- Card Action Buttons -->
+      <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--color-hairline); justify-content: flex-end;">
+        <button
+          v-if="status.status === 'translating'"
+          class="btn btn-danger"
+          style="padding: 6px 14px; font-size: 13px;"
+          @click="cancelTranslation"
+        >
+          Hủy dịch
+        </button>
+        <button
+          v-if="status.status === 'failed' && hasCheckpoint"
+          class="btn btn-filled"
+          style="padding: 6px 14px; font-size: 13px;"
+          @click="translateAll(true)"
+        >
+          Tiếp tục dịch
+        </button>
       </div>
     </div>
 
     <!-- Live Logs Terminal Panel -->
-    <div v-if="showLogs" class="log-console-wrapper" style="margin-bottom: 24px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; background: #0c0d10; padding: 8px 16px; border-radius: 8px 8px 0 0; border-bottom: 1px solid #1f2026;">
-        <span style="color: #a1a1aa; font-family: monospace; font-size: 12px; font-weight: 600;">TERMINAL LOGS</span>
-        <button @click="status.logs = []" style="background: none; border: none; color: #a1a1aa; font-size: 11px; font-family: monospace; cursor: pointer; text-decoration: underline;">Xóa màn hình</button>
-      </div>
-      <div ref="logContainer" class="log-console" style="max-height: 250px; border-radius: 0 0 8px 8px; border-top: none;">
-        <div v-for="(log, idx) in status.logs" :key="idx" :class="getLogLineClass(log)">
-          {{ log }}
-        </div>
-        <div v-if="status.logs.length === 0" style="color: #52525b; font-style: italic;">Đang đợi log sự kiện...</div>
-      </div>
-    </div>
+    <LogConsole 
+      v-if="showLogs" 
+      :logs="status.logs" 
+      @clear="status.logs = []" 
+    />
 
     <!-- Chunks Table Wrapper -->
     <div class="data-table-wrapper">
@@ -147,11 +168,16 @@
             <th style="width: 60px;">ID</th>
             <th>Văn bản gốc</th>
             <th>Bản dịch</th>
-            <th style="width: 140px;">Trạng thái</th>
+            <th style="width: 160px;">Trạng thái</th>
+            <th style="width: 100px;">Hành động</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="chunk in chunks" :key="chunk.id">
+          <tr 
+            v-for="chunk in chunks" 
+            :key="chunk.id"
+            :class="{ 'target-chunk-highlight': status.target_chunks && status.target_chunks.includes(chunk.id) }"
+          >
             <td style="text-align: center; vertical-align: top; padding-top: 14px;">
               <input type="checkbox" :value="chunk.id" v-model="selectedChunks" />
             </td>
@@ -170,9 +196,31 @@
               <div v-else class="chunk-text-box placeholder-text">Chưa được dịch.</div>
             </td>
             <td style="vertical-align: top; padding-top: 14px;">
-              <span :class="chunkStatusBadgeClass(chunk.status)">
-                {{ chunkStatusLabel(chunk.status) }}
-              </span>
+              <StatusBadge :status="getChunkStatus(chunk)" type="chunk" />
+              <!-- Detailed metadata if present or currently translating -->
+              <div v-if="chunk.meta || getChunkStatus(chunk) === 'translating'" style="font-size: 11px; color: var(--color-slate); margin-top: 6px; line-height: 1.4;">
+                <div v-if="getChunkStatus(chunk) === 'translating'">
+                  Lượt thử: {{ status.try_count || 1 }}
+                </div>
+                <div v-else>
+                  <div v-if="chunk.meta.try_count">Lượt thử: {{ chunk.meta.try_count }}</div>
+                  <div v-if="chunk.meta.elapsed_time">Thời gian: {{ chunk.meta.elapsed_time }}s</div>
+                  <div v-if="chunk.meta.error" style="color: var(--color-seal-red); cursor: help;" :title="chunk.meta.error">
+                    Lỗi: {{ chunk.meta.error.length > 30 ? chunk.meta.error.substring(0, 30) + '...' : chunk.meta.error }}
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td style="vertical-align: top; padding-top: 10px;">
+              <button 
+                class="btn btn-outline" 
+                style="padding: 4px 8px; font-size: 12px; height: 26px;" 
+                @click="retranslateChunk(chunk.id)"
+                :disabled="status.status === 'translating'"
+                title="Dịch lại phân đoạn này"
+              >
+                Dịch lại
+              </button>
             </td>
           </tr>
         </tbody>
@@ -198,11 +246,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { marked } from 'marked'
+import { api } from '@/api/api'
+import StatusBadge from '@/components/StatusBadge.vue'
+import LogConsole from '@/components/LogConsole.vue'
 
 const route = useRoute()
+const router = useRouter()
 const project = computed(() => route.params.project)
 const novel = computed(() => route.params.novel)
 
@@ -229,7 +281,6 @@ const isDownloadAvailable = ref(false)
 
 // Logs and translation status
 const showLogs = ref(false)
-const logContainer = ref(null)
 const status = ref({
   status: 'idle',
   current_chunk: 0,
@@ -272,12 +323,9 @@ function toggleAll(event) {
 // Load genres and languages
 async function loadConfig() {
   try {
-    const res = await fetch('/api/genres')
-    if (res.ok) {
-      const data = await res.json()
-      genres.value = data.genres || {}
-      languages.value = data.languages || {}
-    }
+    const data = await api.getGenresConfig()
+    genres.value = data.genres || {}
+    languages.value = data.languages || {}
   } catch (err) {
     console.error('Failed to load genres config:', err)
   }
@@ -287,10 +335,7 @@ async function loadConfig() {
 async function loadCheckpoints() {
   if (!project.value) return
   try {
-    const res = await fetch(`/api/projects/${project.value}/checkpoints`)
-    if (res.ok) {
-      checkpoints.value = await res.json()
-    }
+    checkpoints.value = await api.getCheckpoints(project.value)
   } catch (err) {
     console.error('Failed to load checkpoints:', err)
   }
@@ -316,8 +361,7 @@ async function checkDownloadAvailable() {
     return
   }
   try {
-    const res = await fetch(`/api/projects/${project.value}/download/${encodeURIComponent(expectedFilename.value)}`, { method: 'HEAD' })
-    isDownloadAvailable.value = res.ok
+    isDownloadAvailable.value = await api.checkDownloadAvailable(project.value, expectedFilename.value)
   } catch (e) {
     isDownloadAvailable.value = false
   }
@@ -327,13 +371,10 @@ async function checkDownloadAvailable() {
 async function loadChunks() {
   if (!project.value || !novel.value) return
   try {
-    const res = await fetch(`/api/projects/${project.value}/novels/${encodeURIComponent(novel.value)}/chunks?page=${page.value}&limit=${limit.value}`)
-    if (res.ok) {
-      const data = await res.json()
-      chunks.value = data.chunks || []
-      totalChunks.value = data.total_chunks || 0
-      totalPages.value = Math.ceil(totalChunks.value / limit.value) || 1
-    }
+    const data = await api.getNovelChunks(project.value, novel.value, page.value, limit.value)
+    chunks.value = data.chunks || []
+    totalChunks.value = data.total_chunks || 0
+    totalPages.value = Math.ceil(totalChunks.value / limit.value) || 1
   } catch (err) {
     console.error('Failed to load chunks:', err)
   }
@@ -346,26 +387,6 @@ function changePage(p) {
   loadChunks()
 }
 
-// Format status badge CSS
-function chunkStatusBadgeClass(st) {
-  switch (st) {
-    case 'completed': return 'badge badge-completed'
-    case 'failed': return 'badge badge-failed'
-    case 'translating': return 'badge badge-translating'
-    default: return 'badge badge-pending'
-  }
-}
-
-// Format status label text
-function chunkStatusLabel(st) {
-  switch (st) {
-    case 'completed': return 'Đã dịch'
-    case 'failed': return 'Lỗi dịch'
-    case 'translating': return 'Đang xử lý'
-    default: return 'Chờ dịch'
-  }
-}
-
 // Parse markdown to HTML safe
 function formatMarkdown(text) {
   if (!text) return ''
@@ -376,30 +397,37 @@ function formatMarkdown(text) {
   }
 }
 
+function getChunkStatus(chunk) {
+  if (status.value.status === 'translating') {
+    if (chunk.id === status.value.current_chunk - 1) {
+      return 'translating'
+    }
+  }
+  return chunk.status
+}
+
 // Start polling status
+let lastCurrentChunk = 0
 function startPolling() {
   if (pollInterval) clearInterval(pollInterval)
+  lastCurrentChunk = status.value.current_chunk
   pollInterval = setInterval(async () => {
     try {
-      const res = await fetch(`/api/projects/${project.value}/status`)
-      if (res.ok) {
-        const data = await res.json()
-        status.value = data
+      const data = await api.getProjectStatus(project.value)
+      status.value = data
 
-        if (showLogs.value) {
-          await nextTick()
-          if (logContainer.value) {
-            logContainer.value.scrollTop = logContainer.value.scrollHeight
-          }
-        }
+      // If chunk changed, reload chunks to show newly completed translations
+      if (data.current_chunk !== lastCurrentChunk) {
+        lastCurrentChunk = data.current_chunk
+        await loadChunks()
+      }
 
-        if (data.status === 'completed' || data.status === 'failed' || data.status === 'idle') {
-          clearInterval(pollInterval)
-          pollInterval = null
-          await loadChunks()
-          await loadCheckpoints()
-          await checkDownloadAvailable()
-        }
+      if (data.status === 'completed' || data.status === 'failed' || data.status === 'idle') {
+        clearInterval(pollInterval)
+        pollInterval = null
+        await loadChunks()
+        await loadCheckpoints()
+        await checkDownloadAvailable()
       }
     } catch (err) {
       console.error('Polling error:', err)
@@ -411,22 +439,24 @@ function startPolling() {
 async function translateSelected(resume = true) {
   if (selectedChunks.value.length === 0) return
   try {
-    const res = await fetch(`/api/projects/${project.value}/novels/${encodeURIComponent(novel.value)}/translate_chunks`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        target_chunks: selectedChunks.value,
-        genre: selectedGenre.value,
-        source_lang: selectedSource.value,
-        target_lang: selectedTarget.value,
-        resume: resume
-      })
-    })
-    if (res.ok) {
-      showLogs.value = true
-      selectedChunks.value = []
-      startPolling()
+    status.value = {
+      ...status.value,
+      status: 'translating',
+      logs: ['[SYS ] Đang kết nối và khởi động tiến trình dịch...'],
+      target_chunks: [...selectedChunks.value],
+      current_chunk: 0,
+      total_chunks: selectedChunks.value.length
     }
+    await api.translateChunks(project.value, novel.value, {
+      target_chunks: selectedChunks.value,
+      genre: selectedGenre.value,
+      source_lang: selectedSource.value,
+      target_lang: selectedTarget.value,
+      resume
+    })
+    showLogs.value = true
+    selectedChunks.value = []
+    startPolling()
   } catch (err) {
     console.error('Failed to translate selected chunks:', err)
   }
@@ -438,21 +468,23 @@ async function translateAll(resume = true) {
     return
   }
   try {
-    const res = await fetch(`/api/projects/${project.value}/novels/${encodeURIComponent(novel.value)}/translate_chunks`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        target_chunks: null,
-        genre: selectedGenre.value,
-        source_lang: selectedSource.value,
-        target_lang: selectedTarget.value,
-        resume: resume
-      })
-    })
-    if (res.ok) {
-      showLogs.value = true
-      startPolling()
+    status.value = {
+      ...status.value,
+      status: 'translating',
+      logs: ['[SYS ] Đang kết nối và khởi động tiến trình dịch...'],
+      target_chunks: null,
+      current_chunk: 0,
+      total_chunks: totalChunks.value
     }
+    await api.translateChunks(project.value, novel.value, {
+      target_chunks: null,
+      genre: selectedGenre.value,
+      source_lang: selectedSource.value,
+      target_lang: selectedTarget.value,
+      resume
+    })
+    showLogs.value = true
+    startPolling()
   } catch (err) {
     console.error('Failed to translate all chunks:', err)
   }
@@ -461,13 +493,11 @@ async function translateAll(resume = true) {
 // Cancel translation task (Pause)
 async function cancelTranslation() {
   try {
-    const res = await fetch(`/api/projects/${project.value}/cancel`, { method: 'POST' })
-    if (res.ok) {
-      setTimeout(async () => {
-        await loadChunks()
-        await loadCheckpoints()
-      }, 1000)
-    }
+    status.value.status = 'failed'
+    status.value.step = 'Đã hủy'
+    await api.cancelTranslation(project.value)
+    await loadChunks()
+    await loadCheckpoints()
   } catch (err) {
     console.error('Failed to cancel translation:', err)
   }
@@ -477,14 +507,43 @@ async function cancelTranslation() {
 function downloadTranslation() {
   const fileToDownload = status.value.output_file || expectedFilename.value
   if (!fileToDownload) return
-  window.open(`/api/projects/${project.value}/download/${encodeURIComponent(fileToDownload)}`, '_blank')
+  const url = api.getDownloadUrl(project.value, fileToDownload)
+  window.open(url, '_blank')
 }
 
-// Styling for different kinds of logs
-function getLogLineClass(log) {
-  if (log.includes('LỖI') || log.includes('Failed') || log.includes('error')) return 'log-line-error'
-  if (log.includes('completed') || log.includes('Done') || log.includes('Success')) return 'log-line-success'
-  return ''
+async function retranslateChunk(chunkId) {
+  if (!confirm(`Bạn có chắc chắn muốn dịch lại phân đoạn #${chunkId + 1}? Tiến trình cũ của phân đoạn này sẽ bị ghi đè.`)) {
+    return
+  }
+  try {
+    status.value = {
+      ...status.value,
+      status: 'translating',
+      logs: ['[SYS ] Đang kết nối và khởi động tiến trình dịch...'],
+      target_chunks: [chunkId],
+      current_chunk: 0,
+      total_chunks: 1
+    }
+    await api.translateChunks(project.value, novel.value, {
+      target_chunks: [chunkId],
+      genre: selectedGenre.value,
+      source_lang: selectedSource.value,
+      target_lang: selectedTarget.value,
+      resume: false // Force retranslation of this specific chunk
+    })
+    showLogs.value = true
+    startPolling()
+  } catch (err) {
+    console.error('Failed to retranslate chunk:', err)
+  }
+}
+
+function formatDuration(seconds) {
+  if (!seconds) return '0s'
+  if (seconds < 60) return `${Math.round(seconds)}s`
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.round(seconds % 60)
+  return `${mins}m ${secs}s`
 }
 
 // Watchers
@@ -507,15 +566,16 @@ onMounted(async () => {
   await checkDownloadAvailable()
   
   // Fetch current status to see if already translating
-  fetch(`/api/projects/${project.value}/status`)
-    .then(res => res.json())
-    .then(data => {
-      status.value = data
-      if (data.status === 'translating') {
-        showLogs.value = true
-        startPolling()
-      }
-    })
+  try {
+    const data = await api.getProjectStatus(project.value)
+    status.value = data
+    if (data.status === 'translating') {
+      showLogs.value = true
+      startPolling()
+    }
+  } catch (err) {
+    console.error('Failed to get initialization status:', err)
+  }
 })
 
 onUnmounted(() => {
@@ -561,5 +621,9 @@ onUnmounted(() => {
 
 .log-console-wrapper {
   box-shadow: var(--shadow-xs);
+}
+.target-chunk-highlight {
+  background-color: rgba(96, 165, 250, 0.08) !important;
+  border-left: 4px solid var(--color-blue);
 }
 </style>

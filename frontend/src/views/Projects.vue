@@ -42,9 +42,7 @@
             </td>
             <td>{{ novelCounts[project] ?? '—' }}</td>
             <td>
-              <span :class="statusBadgeClass(project)">
-                {{ statusLabel(project) }}
-              </span>
+              <StatusBadge :status="statuses[project]?.status" type="project" />
             </td>
             <td>
               <div class="col-actions">
@@ -77,6 +75,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { api } from '@/api/api'
+import StatusBadge from '@/components/StatusBadge.vue'
 
 const router = useRouter()
 
@@ -88,17 +88,16 @@ const newProjectName = ref('')
 // Fetch all projects
 async function fetchProjects() {
   try {
-    const res = await fetch('/api/projects')
-    if (res.ok) {
-      projects.value = await res.json()
-      // Fetch novel counts and statuses for each project
-      await Promise.all(projects.value.map(async (proj) => {
-        await Promise.all([
-          fetchNovelCount(proj),
-          fetchStatus(proj)
-        ])
-      }))
-    }
+    const data = await api.getProjects()
+    projects.value = data || []
+    
+    // Fetch novel counts and statuses for each project
+    await Promise.all(projects.value.map(async (proj) => {
+      await Promise.all([
+        fetchNovelCount(proj),
+        fetchStatus(proj)
+      ])
+    }))
   } catch (err) {
     console.error('Failed to fetch projects:', err)
   }
@@ -107,11 +106,8 @@ async function fetchProjects() {
 // Fetch novel count for a project
 async function fetchNovelCount(project) {
   try {
-    const res = await fetch(`/api/projects/${encodeURIComponent(project)}/novels`)
-    if (res.ok) {
-      const novels = await res.json()
-      novelCounts.value[project] = Array.isArray(novels) ? novels.length : 0
-    }
+    const novels = await api.getNovels(project)
+    novelCounts.value[project] = Array.isArray(novels) ? novels.length : 0
   } catch (err) {
     novelCounts.value[project] = 0
   }
@@ -120,52 +116,9 @@ async function fetchNovelCount(project) {
 // Fetch status for a project
 async function fetchStatus(project) {
   try {
-    const res = await fetch(`/api/projects/${encodeURIComponent(project)}/status`)
-    if (res.ok) {
-      statuses.value[project] = await res.json()
-    }
+    statuses.value[project] = await api.getProjectStatus(project)
   } catch (err) {
     statuses.value[project] = null
-  }
-}
-
-// Get status badge class
-function statusBadgeClass(project) {
-  const status = statuses.value[project]
-  if (!status || !status.status) return 'badge badge-pending'
-  
-  switch (status.status) {
-    case 'running':
-    case 'translating':
-      return 'badge badge-translating'
-    case 'error':
-    case 'failed':
-      return 'badge badge-failed'
-    case 'completed':
-    case 'done':
-      return 'badge badge-completed'
-    default:
-      return 'badge badge-pending'
-  }
-}
-
-// Get status label
-function statusLabel(project) {
-  const status = statuses.value[project]
-  if (!status || !status.status) return 'Rảnh'
-  
-  switch (status.status) {
-    case 'running':
-    case 'translating':
-      return 'Đang dịch'
-    case 'error':
-    case 'failed':
-      return 'Lỗi'
-    case 'completed':
-    case 'done':
-      return 'Hoàn tất'
-    default:
-      return 'Rảnh'
   }
 }
 
@@ -175,19 +128,12 @@ async function createProject() {
   if (!name) return
 
   try {
-    const res = await fetch(`/api/projects/${encodeURIComponent(name)}`, {
-      method: 'POST'
-    })
-    if (res.ok) {
-      newProjectName.value = ''
-      await fetchProjects()
-    } else {
-      const data = await res.json()
-      alert(data.detail || 'Không thể tạo dự án!')
-    }
+    await api.createProject(name)
+    newProjectName.value = ''
+    await fetchProjects()
   } catch (err) {
     console.error('Failed to create project:', err)
-    alert('Lỗi kết nối khi tạo dự án!')
+    alert(err.message || 'Không thể tạo dự án!')
   }
 }
 
@@ -198,12 +144,8 @@ async function confirmDelete(project) {
   }
 
   try {
-    const res = await fetch(`/api/projects/${encodeURIComponent(project)}`, {
-      method: 'DELETE'
-    })
-    if (res.ok) {
-      await fetchProjects()
-    }
+    await api.deleteProject(project)
+    await fetchProjects()
   } catch (err) {
     console.error('Failed to delete project:', err)
   }
